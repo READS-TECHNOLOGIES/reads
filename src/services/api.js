@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Vercel routes our /api path to the Python backend function
 const API_URL = "/api"; 
 
-// FIX: Implement the getAuthHeader function
+// Function to get the Authorization header
 const getAuthHeader = () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -19,8 +19,16 @@ const getAuthHeader = () => {
 // Helper function to process failed responses aggressively
 const handleFailedResponse = async (res, action) => {
     let errorDetail = `Failed to ${action} (Status: ${res.status})`;
-    
-    // 💥 CRITICAL FIX FOR 409: Throw a specific error for the frontend component to handle.
+
+    // --- CRITICAL FIX 1: CENTRALIZED 401 HANDLING ---
+    if (res.status === 401) {
+        // Automatically log out the user by removing the token
+        localStorage.removeItem('access_token');
+        throw new Error('AuthenticationRequired');
+    }
+    // -------------------------------------------------
+
+    // CRITICAL FIX FOR 409: Throw a specific error for the frontend component to handle.
     if (res.status === 409) {
         throw new Error('QuizAlreadyCompleted');
     }
@@ -32,7 +40,7 @@ const handleFailedResponse = async (res, action) => {
         const text = await res.text();
         errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`; 
     }
-    
+
     console.error(`${action} Failed: ${errorDetail}`); 
     throw new Error(errorDetail);
 }
@@ -46,11 +54,11 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-            
+
             if (!res.ok) {
                 await handleFailedResponse(res, 'Login');
             }
-            
+
             const data = await res.json();
             localStorage.setItem('access_token', data.access_token);
             return data; 
@@ -61,11 +69,11 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, password })
             });
-            
+
             if (!res.ok) {
                 await handleFailedResponse(res, 'Signup');
             }
-            
+
             const data = await res.json();
             localStorage.setItem('access_token', data.access_token);
             return data;
@@ -73,15 +81,16 @@ export const api = {
         me: async () => {
             const token = localStorage.getItem('access_token');
             if (!token) return null;
-            
-            // FIX: Use getAuthHeader to ensure consistency
+
+            // Uses getAuthHeader and relies on the new handleFailedResponse 
+            // to manage token removal if 401 occurs.
             const res = await fetch(`${API_URL}/user/profile`, { headers: getAuthHeader() });
-            
+
             if (!res.ok) {
-                localStorage.removeItem('access_token');
+                // Return null if fetch failed (includes 401, 500, etc.)
                 return null;
             }
-            
+
             const data = await res.json();
             return {
                 id: data.id,
@@ -98,12 +107,11 @@ export const api = {
     profile: {
         getStats: async () => {
             const res = await fetch(`${API_URL}/user/stats`, { headers: getAuthHeader() });
-            // FIX: Use handleFailedResponse for proper error handling on not res.ok
             if (!res.ok) {
-                // If it fails, log the error but return default data
                 try {
                     await handleFailedResponse(res, 'Fetch User Stats');
                 } catch (e) {
+                    // Non-fatal, return default data
                     console.error("Non-fatal error fetching user stats:", e.message);
                 }
                 return { lessons_completed: 0, quizzes_taken: 0 };
@@ -118,7 +126,6 @@ export const api = {
     learn: {
         getCategories: async () => {
             const res = await fetch(`${API_URL}/lessons/categories`, { headers: getAuthHeader() });
-            // FIX: Use handleFailedResponse for proper error handling
             if (!res.ok) {
                 try {
                     await handleFailedResponse(res, 'Fetch Categories');
@@ -138,7 +145,6 @@ export const api = {
         },
         getLessons: async (categoryName) => {
             const res = await fetch(`${API_URL}/lessons/category/${categoryName}`, { headers: getAuthHeader() });
-            // FIX: Use handleFailedResponse for proper error handling
             if (!res.ok) {
                 try {
                     await handleFailedResponse(res, 'Fetch Lessons');
@@ -147,7 +153,7 @@ export const api = {
                 }
                 return [];
             }
-            
+
             const data = await res.json();
             return data.map(l => ({
                 ...l,
@@ -156,7 +162,6 @@ export const api = {
         },
         getLessonDetail: async (lessonId) => {
             const res = await fetch(`${API_URL}/lessons/${lessonId}`, { headers: getAuthHeader() });
-            // FIX: Use handleFailedResponse for proper error handling
             if (!res.ok) {
                 await handleFailedResponse(res, 'Fetch Lesson Detail');
             }
@@ -164,15 +169,12 @@ export const api = {
         },
         getQuizQuestions: async (lessonId) => {
             const res = await fetch(`${API_URL}/lessons/${lessonId}/quiz`, { headers: getAuthHeader() });
-            
-            // 💥 THE CRITICAL FIX: Use the aggressive handler to catch 409
+
+            // Uses handleFailedResponse, which now catches 401 (AuthRequired) and 409 (QuizAlreadyCompleted)
             if (!res.ok) {
-                // handleFailedResponse now throws 'QuizAlreadyCompleted' for 409, 
-                // or a generic error for others (404, 500 etc.)
                 await handleFailedResponse(res, 'Fetch Quiz Questions'); 
             }
-            
-            // If res.ok (status 200), return the data
+
             return res.json();
         },
         submitQuiz: async (lessonId, answers) => {
@@ -194,7 +196,6 @@ export const api = {
     wallet: {
         getBalance: async () => {
             const res = await fetch(`${API_URL}/wallet/balance`, { headers: getAuthHeader() });
-            // FIX: Use handleFailedResponse for proper error handling
             if (!res.ok) {
                 try {
                     await handleFailedResponse(res, 'Fetch Wallet Balance');
@@ -207,10 +208,8 @@ export const api = {
             return data.token_balance;
         },
         getHistory: async () => {
-            // 1. Correct route to match the backend change
             const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });
             if (!res.ok) {
-                // FIX: Use handleFailedResponse for proper error handling
                 try {
                     await handleFailedResponse(res, 'Fetch Wallet History');
                 } catch (e) {
@@ -218,30 +217,21 @@ export const api = {
                 }
                 return [];
             }
-            
+
             const data = await res.json();
             return data;
         }
     },
-    
+
     // --- ADMIN ---
     admin: {
-
+        // FIX: Renamed and consolidated 'getAllUsers' and 'getUsers' into a single function.
         getUsers: async () => {
-            const res = await fetch(`${API_URL}/admin/users`, { headers: getAuthHeader() });
-            if (!res.ok) {
-                await handleFailedResponse(res, 'Fetch Users (Admin)');
-            }
-            return res.json();
-        },
-
-        // ✅ NEW: REQUIRED BY UserManagement.jsx
-        getAllUsers: async () => {
             const res = await fetch(`${API_URL}/admin/users`, {
                 headers: getAuthHeader()
             });
             if (!res.ok) {
-                await handleFailedResponse(res, 'Fetch All Users');
+                await handleFailedResponse(res, 'Fetch All Users (Admin)');
             }
             return res.json();
         },
@@ -268,7 +258,7 @@ export const api = {
             }
             return res.json();
         },
-        
+
         deleteLesson: async (lessonId) => {
             const res = await fetch(`${API_URL}/admin/lessons/${lessonId}`, {
                 method: 'DELETE',
@@ -282,7 +272,7 @@ export const api = {
 
         uploadQuiz: async (lessonId, questions) => {
             const quizRequest = { lesson_id: lessonId, questions };
-            
+
             const res = await fetch(`${API_URL}/admin/quiz`, {
                 method: 'POST',
                 headers: getAuthHeader(),
@@ -305,7 +295,6 @@ export const api = {
             return {};
         },
 
-        // ✅ NEW: REQUIRED BY LessonQuizManager.jsx
         getAllLessons: async () => {
             const res = await fetch(`${API_URL}/admin/lessons`, {
                 headers: getAuthHeader()
@@ -316,7 +305,6 @@ export const api = {
             return res.json();
         },
 
-        // ✅ NEW: REQUIRED BY QuizCreationForm.jsx
         createQuiz: async (quizData) => {
             const res = await fetch(`${API_URL}/admin/quiz`, {
                 method: 'POST',

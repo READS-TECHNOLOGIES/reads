@@ -17,6 +17,17 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+# --- NEW: Password Reset Schemas ---
+class RequestPasswordReset(BaseModel):
+    email: EmailStr
+
+class ResetPassword(BaseModel):
+    token: str
+    new_password: str
+
+class PasswordResetResponse(BaseModel):
+    message: str
+
 # --- User & Wallet Schemas ---
 class UserProfile(BaseModel):
     id: UUID
@@ -24,7 +35,7 @@ class UserProfile(BaseModel):
     email: EmailStr
     is_admin: bool # 💡 UPGRADE: Admin Flag
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -38,7 +49,7 @@ class UserStats(BaseModel):
 class LeaderboardEntry(BaseModel):
     name: str
     token_balance: int
-    
+
     class Config:
         from_attributes = True
 
@@ -52,7 +63,7 @@ class LessonBase(BaseModel):
 class LessonDetail(LessonBase):
     content: str
     video_url: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -85,7 +96,7 @@ class QuizQuestionResponse(BaseModel):
     id: UUID
     question: str
     options: List[str] # e.g. ["Option A", "Option B"]
-    
+
 class AnswerSubmission(BaseModel):
     question_id: UUID
     selected: str # "A", "B", etc.
@@ -99,7 +110,7 @@ class QuizResultResponse(BaseModel):
     correct: int
     wrong: int
     tokens_awarded: int
-    
+
     class Config:
         from_attributes = True
 
@@ -107,7 +118,7 @@ class QuizResultResponse(BaseModel):
 class RewardSummary(BaseModel):
     total_tokens_earned: int
     total_quizzes_passed: int
-    
+
     class Config:
         from_attributes = True
 

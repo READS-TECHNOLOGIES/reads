@@ -9,9 +9,14 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@readstechnologies.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://reads-phi.vercel.app")
 
+print(f"📧 Email Service Initialized:")
+print(f"   - API Key Present: {'Yes' if SENDGRID_API_KEY else 'NO - EMAIL WILL NOT WORK'}")
+print(f"   - From Email: {SENDGRID_FROM_EMAIL}")
+print(f"   - Frontend URL: {FRONTEND_URL}")
+
 if not SENDGRID_API_KEY:
-    print("WARNING: SENDGRID_API_KEY not set. Email functionality will not work.")
-    print("Set the environment variable to enable email sending.")
+    print("⚠️  WARNING: SENDGRID_API_KEY not set. Email functionality will not work.")
+    print("   Set environment variable SENDGRID_API_KEY in Vercel settings.")
 
 def send_password_reset_email(user_email: str, reset_token: str):
     """
@@ -21,9 +26,12 @@ def send_password_reset_email(user_email: str, reset_token: str):
         user_email: The user's email address
         reset_token: The secure reset token
     """
+    print(f"\n🔄 Attempting to send password reset email to: {user_email}")
+    
     if not SENDGRID_API_KEY:
-        print(f"⚠️  Email not sent (API key not configured). Token for {user_email}: {reset_token}")
-        return
+        print(f"⚠️  Email not sent (API key not configured).")
+        print(f"   Token for testing: {reset_token}")
+        return False
     
     # Create reset link that user clicks
     reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
@@ -63,7 +71,7 @@ def send_password_reset_email(user_email: str, reset_token: str):
                             <p style="color: #666; font-size: 14px;">
                                 Or copy and paste this link in your browser:
                                 <br/>
-                                <code style="background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-top: 8px;">
+                                <code style="background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-top: 8px; word-break: break-all;">
                                     {reset_link}
                                 </code>
                             </p>
@@ -89,23 +97,31 @@ def send_password_reset_email(user_email: str, reset_token: str):
         )
         
         # Send email
+        print(f"📤 Sending email via SendGrid...")
         response = sg.send(message)
-        print(f"✅ Password reset email sent to {user_email} (Status: {response.status_code})")
+        
+        print(f"✅ Email sent successfully!")
+        print(f"   Status Code: {response.status_code}")
+        print(f"   To: {user_email}")
+        
         return True
         
     except Exception as e:
-        print(f"❌ Failed to send password reset email to {user_email}. Error: {e}")
-        # Don't raise exception - log and continue
-        # In production, you might want to retry or alert admins
+        print(f"❌ Failed to send password reset email!")
+        print(f"   Error Type: {type(e).__name__}")
+        print(f"   Error Message: {str(e)}")
+        print(f"   To: {user_email}")
         return False
 
 def send_welcome_email(user_email: str, user_name: str):
     """
     Sends a welcome email to new users.
     """
+    print(f"\n🔄 Attempting to send welcome email to: {user_email}")
+    
     if not SENDGRID_API_KEY:
-        print(f"⚠️  Welcome email not sent (API key not configured). User: {user_email}")
-        return
+        print(f"⚠️  Welcome email not sent (API key not configured).")
+        return False
     
     try:
         sg = SendGridAPIClient(SENDGRID_API_KEY)
@@ -152,10 +168,18 @@ def send_welcome_email(user_email: str, user_name: str):
             """
         )
         
+        print(f"📤 Sending welcome email via SendGrid...")
         response = sg.send(message)
-        print(f"✅ Welcome email sent to {user_email} (Status: {response.status_code})")
+        
+        print(f"✅ Welcome email sent successfully!")
+        print(f"   Status Code: {response.status_code}")
+        print(f"   To: {user_email}")
+        
         return True
         
     except Exception as e:
-        print(f"❌ Failed to send welcome email to {user_email}. Error: {e}")
+        print(f"❌ Failed to send welcome email!")
+        print(f"   Error Type: {type(e).__name__}")
+        print(f"   Error Message: {str(e)}")
+        print(f"   To: {user_email}")
         return False

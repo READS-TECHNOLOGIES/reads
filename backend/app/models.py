@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -22,6 +22,20 @@ class User(Base):
     progress = relationship("LessonProgress", back_populates="user")
     quiz_results = relationship("QuizResult", back_populates="user")
     rewards = relationship("Reward", back_populates="user")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
+
+# --- NEW: Password Reset Token Model ---
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+
+    user = relationship("User", back_populates="password_reset_tokens")
 
 class Lesson(Base):
     __tablename__ = "lessons"
@@ -38,21 +52,28 @@ class Lesson(Base):
     questions = relationship("QuizQuestion", back_populates="lesson")
 
 
-# 🟢 FIX: Added LessonProgress model with the missing 'completed' column
+# 🟢 FIX: LessonProgress model with added UniqueConstraint and relationship
 class LessonProgress(Base):
     __tablename__ = "lesson_progress"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     lesson_id = Column(UUID(as_uuid=True), ForeignKey("lessons.id"), nullable=False)
-    
-    # CRITICAL FIX: The missing column that caused the FATAL error
+
+    # CRITICAL FIX: The missing column
     completed = Column(Boolean, default=False, nullable=False) 
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # 🚀 IMPROVEMENT: Ensure only one progress entry per user/lesson combination
+    __table_args__ = (
+        UniqueConstraint('user_id', 'lesson_id', name='uq_user_lesson_progress'),
+    )
 
     user = relationship("User", back_populates="progress")
+    # IMPROVEMENT: Add relationship to Lesson for easy traversal
+    lesson = relationship("Lesson") 
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"

@@ -1,118 +1,160 @@
-import React, { useState, useEffect } from 'react';
-import { Wallet, Clock, TrendingUp } from 'lucide-react';
-import { api } from '../../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Paper, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import { fetchProtectedData } from '../api';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 
-// --- NEW/FIXED: Helper function to safely format the date ---
-const formatDate = (isoString) => {
-    if (!isoString) return 'N/A';
-    try {
-        // Handle both full ISO strings and potential truncated timestamps
-        const date = new Date(isoString);
-        if (isNaN(date.getTime())) {
-            // Fallback for invalid date strings (should not happen with our backend schema, but good practice)
-            return new Date(isoString.split('T')[0]).toLocaleDateString('en-US');
-        }
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    } catch (e) {
-        console.error("Error formatting date:", e);
-        return 'Invalid Date';
-    }
-};
+const WalletModule = () => {
+    const { token } = useAuth();
+    const [balance, setBalance] = useState(0);
+    const [history, setHistory] = useState([]);
+    const [summary, setSummary] = useState({});
+    const [walletAddress, setWalletAddress] = useState(''); // 🟢 NEW STATE FOR WALLET ADDRESS
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [copied, setCopied] = useState(false);
 
-const WalletModule = ({ balance, onUpdateBalance }) => {
-  const [history, setHistory] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+    const fetchData = useCallback(async () => {
+        if (!token) return;
 
-  useEffect(() => {
-    // Fetch both balance and history on component load
-    const fetchData = async () => {
-        setIsLoading(true);
+        setLoading(true);
+        setError(null);
+
         try {
-            // Fetch balance (optional, as App.jsx likely handles it, but keeps module self-contained)
-            const balanceResponse = await api.wallet.getBalance();
-            // Assuming getBalance returns an object with { token_balance: N }
-            onUpdateBalance(balanceResponse.token_balance);
+            // Fetch multiple data points concurrently
+            const [balanceData, historyData, summaryData, profileData] = await Promise.all([
+                fetchProtectedData('/wallet/balance', token),
+                fetchProtectedData('/wallet/history', token),
+                fetchProtectedData('/rewards/summary', token),
+                fetchProtectedData('/user/profile', token) // 🟢 Fetch user profile for the address
+            ]);
 
-            // CRITICAL: Fetch history. This must hit the /api/wallet/history route.
-            const historyData = await api.wallet.getHistory();
+            setBalance(balanceData.token_balance);
             setHistory(historyData);
+            setSummary(summaryData);
 
-        } catch (error) {
-            console.error("Failed to fetch wallet data:", error);
-            // Optionally show a toast error here
+            // 🟢 UPDATE STATE: Set the Cardano address
+            if (profileData && profileData.cardano_address) {
+                setWalletAddress(profileData.cardano_address);
+            }
+        } catch (err) {
+            console.error("Wallet data fetching failed:", err);
+            setError(err.message || "Failed to load wallet data.");
         } finally {
-            setIsLoading(false);
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleCopy = () => {
+        if (walletAddress) {
+            navigator.clipboard.writeText(walletAddress);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
         }
     };
 
-    fetchData();
-  }, [onUpdateBalance]); // Depend on onUpdateBalance to refresh the main App state
+    const formatAddress = (address) => {
+        if (!address) return 'N/A';
+        // Format to show start and end for readability
+        return `${address.slice(0, 10)}...${address.slice(-6)}`;
+    };
 
-  // --- FIXED: Render function uses the correct backend fields ---
-  const renderHistoryItem = (tx) => {
-      const isReward = tx.type === 'Reward';
-      const icon = isReward 
-          ? <TrendingUp size={16} className='text-green-500' /> 
-          : <Clock size={16} className='text-gray-500'/>; // Placeholder for other types
-      const amountColor = isReward ? 'text-green-600 dark:text-green-400' : 'text-gray-500';
+    if (loading) {
+        return <CircularProgress sx={{ display: 'block', margin: '20px auto' }} />;
+    }
 
-      return (
-        // Key must be unique, tx.id is a UUID string, so this is correct.
-        <div key={tx.id} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-                {icon}
-                <div>
-                    {/* Use lesson_title from the backend data */}
-                    <p className='text-sm font-semibold dark:text-white'>{tx.lesson_title || tx.type || 'Transaction'}</p> 
-                    {/* Safely format the created_at timestamp */}
-                    <p className='text-xs text-gray-500'>{formatDate(tx.created_at)}</p>
-                </div>
-            </div>
-            {/* Use tokens_earned from the backend data */}
-            <span className={`font-bold ${amountColor}`}>{`+${tx.tokens_earned} TKN`}</span>
-        </div>
-      );
-  };
-    // -------------------------------------------------------------------
+    if (error) {
+        return <Alert severity="error">Error: {error}</Alert>;
+    }
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-3xl font-bold dark:text-white">My Wallet</h2>
+    return (
+        <Paper sx={{ p: 3, maxWidth: 800, margin: '20px auto' }}>
+            <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
+                <AccountBalanceWalletIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                Your $READS Wallet
+            </Typography>
 
-      {/* Balance Card */}
-      <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
-        <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">Current Token Balance</p>
-        <h3 className="text-4xl font-bold">{balance} <span className="text-yellow-400 text-xl">TKN</span></h3>
-        <p className='text-sm text-slate-400 mt-1'>Rewards are earned by completing quizzes.</p>
-        <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
-          <Wallet size={120} />
-        </div>
-      </div>
+            {/* 🟢 NEW SECTION: CARDANO WALLET ADDRESS */}
+            <Box sx={{ p: 2, mb: 3, border: '1px solid #ccc', borderRadius: 1, backgroundColor: '#f9f9f9' }}>
+                <Typography variant="subtitle1" component="div" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Cardano Wallet Address
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', overflowWrap: 'break-word', flexGrow: 1, mr: 2 }}>
+                        {formatAddress(walletAddress)}
+                    </Typography>
+                    <Button 
+                        onClick={handleCopy} 
+                        variant="outlined" 
+                        size="small"
+                        startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
+                        disabled={!walletAddress}
+                    >
+                        {copied ? 'Copied' : 'Copy'}
+                    </Button>
+                </Box>
+                {/* Optional full address tooltip or full display on click */}
+                <Typography variant="caption" color="text.secondary">
+                    Used for receiving ADA/NFTs on the Cardano Testnet.
+                </Typography>
+            </Box>
+            {/* END: CARDANO WALLET ADDRESS */}
 
-      {/* History Section */}
-      <div>
-        <h3 className="font-bold text-xl mb-4 dark:text-white">Recent Transactions</h3>
-        <div className="space-y-3">
-            {isLoading ? (
-                <p className='text-center text-gray-500 dark:text-gray-400'>Loading history...</p>
-            ) : history.length > 0 ? (
-                history.map(renderHistoryItem)
-            ) : (
-                <div className="p-6 text-center bg-white dark:bg-slate-800 rounded-xl text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-slate-700">
-                    <Clock size={24} className="mx-auto mb-2 text-gray-400"/>
-                    <p>No transactions yet.</p>
-                    <p className='text-sm mt-1'>Complete a quiz with a score of 70% or more to earn your first tokens!</p>
-                </div>
-            )}
-        </div>
-      </div>
 
-    </div>
-  );
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" color="primary">
+                    $READS Token Balance
+                </Typography>
+                <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold' }}>
+                    {balance.toLocaleString()}
+                </Typography>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+                <HistoryToggleOffIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                Reward History
+            </Typography>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 2 }}>
+                <Typography variant="body1">
+                    **Total Earned:** {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0}
+                </Typography>
+                <Typography variant="body1">
+                    **Quizzes Passed:** {summary.total_quizzes_passed || 0}
+                </Typography>
+            </Box>
+
+            <List sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #eee', borderRadius: 1, mt: 2 }}>
+                {history.length === 0 ? (
+                    <ListItem>
+                        <ListItemText primary="No reward history yet." />
+                    </ListItem>
+                ) : (
+                    history.map((item) => (
+                        <ListItem key={item.id} secondaryAction={
+                            <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>
+                                +{item.tokens_earned} $READS
+                            </Typography>
+                        }>
+                            <ListItemText
+                                primary={item.lesson_title}
+                                secondary={`Source: ${item.type} | Date: ${new Date(item.created_at).toLocaleDateString()}`}
+                            />
+                        </ListItem>
+                    ))
+                )}
+            </List>
+        </Paper>
+    );
 };
 
 export default WalletModule;

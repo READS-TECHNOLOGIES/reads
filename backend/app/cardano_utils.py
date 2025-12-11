@@ -130,7 +130,8 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
         print(f"✅ Address created: {str(address)[:30]}...")
 
         print("Step 4: Encrypting signing key...")
-        skey_bytes = payment_signing_key.to_bytes()
+        # Use to_cbor() instead of to_bytes() for newer pycardano versions
+        skey_bytes = bytes(payment_signing_key.to_cbor())
         encrypted_skey_bytes = fernet.encrypt(skey_bytes)
         encrypted_hex = encrypted_skey_bytes.hex()
         print(f"✅ Signing key encrypted ({len(encrypted_hex)} chars)")
@@ -171,7 +172,8 @@ def decrypt_skey(encrypted_skey_hex: str) -> Optional[Any]:
     try:
         encrypted_skey_bytes = bytes.fromhex(encrypted_skey_hex)
         skey_bytes = fernet.decrypt(encrypted_skey_bytes)
-        return PaymentSigningKey.from_bytes(skey_bytes)
+        # Use from_cbor() instead of from_bytes() for newer pycardano versions
+        return PaymentSigningKey.from_cbor(skey_bytes)
     except Exception as e:
         print(f"❌ Failed to decrypt signing key: {e}")
         traceback.print_exc()

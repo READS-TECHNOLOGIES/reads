@@ -23,11 +23,5 @@
       "src": "/(.*)",
       "dest": "/dist/index.html"
     }
-  ],
-  "functions": {
-    "backend/main.py": {
-      "runtime": "python3.11",
-      "maxDuration": 10
-    }
-  }
+  ]
 }

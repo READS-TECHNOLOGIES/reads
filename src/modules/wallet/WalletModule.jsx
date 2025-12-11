@@ -26,23 +26,38 @@ const WalletModule = ({ balance, onUpdateBalance }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [cardanoAddress, setCardanoAddress] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
         setIsLoading(true);
+        setError(null);
+        
         try {
             // Fetch balance
-            const balanceResponse = await api.wallet.getBalance();
-            onUpdateBalance(balanceResponse.token_balance);
+            try {
+                const balanceResponse = await api.wallet.getBalance();
+                if (balanceResponse && typeof balanceResponse.token_balance === 'number') {
+                    onUpdateBalance(balanceResponse.token_balance);
+                }
+            } catch (err) {
+                console.error("Error fetching balance:", err);
+            }
 
             // Fetch history
-            const historyData = await api.wallet.getHistory();
-            setHistory(historyData);
+            try {
+                const historyData = await api.wallet.getHistory();
+                if (Array.isArray(historyData)) {
+                    setHistory(historyData);
+                }
+            } catch (err) {
+                console.error("Error fetching history:", err);
+            }
 
             // Fetch Cardano wallet address
             try {
                 const userResponse = await api.auth.getCurrentUser();
-                if (userResponse.cardano_wallet_address) {
+                if (userResponse && userResponse.cardano_wallet_address) {
                     setCardanoAddress(userResponse.cardano_wallet_address);
                 }
             } catch (err) {
@@ -51,13 +66,14 @@ const WalletModule = ({ balance, onUpdateBalance }) => {
 
         } catch (error) {
             console.error("Failed to fetch wallet data:", error);
+            setError("Failed to load wallet data");
         } finally {
             setIsLoading(false);
         }
     };
 
     fetchData();
-  }, [onUpdateBalance]);
+  }, []); // Remove onUpdateBalance from dependencies to prevent infinite loops
 
   const handleCopyAddress = async () => {
     if (!cardanoAddress) return;
@@ -100,6 +116,17 @@ const WalletModule = ({ balance, onUpdateBalance }) => {
         </div>
       );
   };
+
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <h2 className="text-3xl font-bold dark:text-white">My Wallet</h2>
+        <div className="p-6 text-center bg-red-50 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

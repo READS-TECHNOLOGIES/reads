@@ -1,8 +1,8 @@
 fastapi==0.115.5
 uvicorn==0.30.3
 python-multipart==0.0.9
-pydantic==2.8.2
-pydantic-settings==2.3.4
+pydantic==2.5.3 
+pydantic-settings==2.1.0 
 sqlalchemy==2.0.32
 python-jose[cryptography]==3.3.0
 passlib==1.7.4
@@ -15,4 +15,4 @@ sendgrid==6.10.0
 pycardano==0.10.0
 cryptography==39.0.2
 cffi==1.15.1
-setuptools==69.5.1 
+setuptools==69.5.1

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import hashlib
 from typing import Tuple
@@ -16,10 +18,20 @@ try:
 except ImportError as e:
     print(f"FATAL SETUP ERROR: Missing required crypto modules: {e}")
     CRYPTO_READY = False
+    # Define dummy types to prevent NameError
+    PaymentSigningKey = None
+    PaymentVerificationKey = None
+    Address = None
+    Network = None
 except Exception as e:
     # Catch any initial loading errors not related to missing imports
     print(f"FATAL SETUP ERROR: General initialization failed: {e}")
     CRYPTO_READY = False
+    # Define dummy types to prevent NameError
+    PaymentSigningKey = None
+    PaymentVerificationKey = None
+    Address = None
+    Network = None
 
 
 # --- Environment Configuration ---
@@ -65,7 +77,7 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
         print("------------------------------------------")
         return "", ""
 
-# 🟢 LINE 70: PaymentSigningKey is now correctly defined as a return type
+
 def decrypt_skey(encrypted_skey_hex: str) -> PaymentSigningKey: 
     """
     Decrypts the stored signing key hex string back into a PyCardano object.

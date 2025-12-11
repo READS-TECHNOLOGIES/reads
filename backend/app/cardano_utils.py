@@ -3,8 +3,7 @@ import hashlib
 from typing import Tuple
 import traceback 
 
-# 🚨 CRITICAL FIX: Put core imports outside the conditional block
-# This ensures that type hints (like PaymentSigningKey) are always defined for Python's parser.
+# --- CRITICAL FIX: Ensure core PyCardano types are defined for Python's parser ---
 try:
     from pycardano import (
         Address, 
@@ -66,7 +65,7 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
         print("------------------------------------------")
         return "", ""
 
-# 🟢 LINE 73: PaymentSigningKey is now correctly defined as a return type
+# 🟢 LINE 70: PaymentSigningKey is now correctly defined as a return type
 def decrypt_skey(encrypted_skey_hex: str) -> PaymentSigningKey: 
     """
     Decrypts the stored signing key hex string back into a PyCardano object.
@@ -76,7 +75,7 @@ def decrypt_skey(encrypted_skey_hex: str) -> PaymentSigningKey:
 
     encrypted_skey_bytes = bytes.fromhex(encrypted_skey_hex)
     skey_bytes = fernet.decrypt(encrypted_skey_bytes)
-    # 🚨 CRITICAL CHECK: Only attempt to create PaymentSigningKey if module loaded
+    
     if not CRYPTO_READY:
          raise Exception("Cannot create PaymentSigningKey: PyCardano failed to load.")
          

@@ -1,10 +1,11 @@
 import os
 import hashlib
 from typing import Tuple
-import traceback # Ensure this is imported
+import traceback 
 
+# 🚨 CRITICAL FIX: Put core imports outside the conditional block
+# This ensures that type hints (like PaymentSigningKey) are always defined for Python's parser.
 try:
-    # 🚨 CRITICAL CHECK: Ensure PyCardano and its crypto dependencies are loaded
     from pycardano import (
         Address, 
         Network, 
@@ -14,13 +15,13 @@ try:
     from cryptography.fernet import Fernet
     CRYPTO_READY = True
 except ImportError as e:
-    # This will be printed if pycardano or cryptography failed to load
     print(f"FATAL SETUP ERROR: Missing required crypto modules: {e}")
     CRYPTO_READY = False
 except Exception as e:
-    # Catch any other initialization errors
+    # Catch any initial loading errors not related to missing imports
     print(f"FATAL SETUP ERROR: General initialization failed: {e}")
     CRYPTO_READY = False
+
 
 # --- Environment Configuration ---
 SECRET_KEY_BASE = os.getenv("SECRET_KEY", "your-default-insecure-key")
@@ -39,13 +40,11 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
     Generates a new Cardano key pair, derives a Preprod Testnet address, 
     and encrypts the payment signing key (private key).
     """
-    # 🛑 Bail out if setup failed
     if not CRYPTO_READY or not fernet:
         print("WARNING: Wallet generation bypassed due to setup error.")
         return "", ""
 
     try:
-        # 1. Generate Signing and Verification Keys
         payment_signing_key = PaymentSigningKey.generate()
         payment_verification_key = PaymentVerificationKey.from_signing_key(payment_signing_key)
 
@@ -55,26 +54,30 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
             network=Network.TESTNET_PREPROD 
         )
 
-        # 3. Serialize & Encrypt the Private Key
         skey_bytes = payment_signing_key.to_bytes()
         encrypted_skey_bytes = fernet.encrypt(skey_bytes)
         
-        # Success!
         return str(address), encrypted_skey_bytes.hex()
 
     except Exception as e:
-        # 🚨 Use traceback to catch any error during generation
         print("--- CARDANO WALLET GENERATION FAILED (RUNTIME) ---")
         print(f"FATAL ERROR: Failed to generate Cardano wallet: {e}")
         traceback.print_exc() 
         print("------------------------------------------")
         return "", ""
 
-def decrypt_skey(encrypted_skey_hex: str) -> PaymentSigningKey:
-    # ... (rest of the decrypt_skey function remains the same)
+# 🟢 LINE 73: PaymentSigningKey is now correctly defined as a return type
+def decrypt_skey(encrypted_skey_hex: str) -> PaymentSigningKey: 
+    """
+    Decrypts the stored signing key hex string back into a PyCardano object.
+    """
     if not fernet:
         raise Exception("Encryption utility not initialized.")
 
     encrypted_skey_bytes = bytes.fromhex(encrypted_skey_hex)
     skey_bytes = fernet.decrypt(encrypted_skey_bytes)
+    # 🚨 CRITICAL CHECK: Only attempt to create PaymentSigningKey if module loaded
+    if not CRYPTO_READY:
+         raise Exception("Cannot create PaymentSigningKey: PyCardano failed to load.")
+         
     return PaymentSigningKey.from_bytes(skey_bytes)

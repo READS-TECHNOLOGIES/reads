@@ -12,7 +12,8 @@ python-dotenv==1.0.1
 gunicorn==22.0.0
 email-validator==2.1.1
 sendgrid==6.10.0
-pycardano==0.10.0
+pycardano==0.9.1
 cryptography==41.0.7
 cffi==1.16.0
+cbor2==5.4.6
 setuptools==69.5.1

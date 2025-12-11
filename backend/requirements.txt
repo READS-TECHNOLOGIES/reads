@@ -13,6 +13,6 @@ gunicorn==22.0.0
 email-validator==2.1.1
 sendgrid==6.10.0
 pycardano==0.10.0
-cryptography==39.0.2
-cffi==1.15.1
+cryptography==41.0.7
+cffi==1.16.0
 setuptools==69.5.1

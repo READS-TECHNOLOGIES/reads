@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -50,13 +50,16 @@ def get_current_admin(current_user: models.User = Depends(auth.get_current_user)
 # ----------------------------------------------------
 
 @app.post("/auth/signup", response_model=schemas.Token)
-def signup_user(user_data: schemas.UserCreate, db: Session = Depends(database.get_db)):
+def signup_user(
+    user_data: schemas.UserCreate, 
+    background_tasks: BackgroundTasks, # 🟢 ADDED: BackgroundTasks
+    db: Session = Depends(database.get_db)
+):
     # Check if user already exists
     if db.query(models.User).filter(models.User.email == user_data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Hash password and create user  
-    # First registered user is automatically made admin for easy setup  
     is_first_user = db.query(models.User).count() == 0  
 
     hashed_password = auth.get_password_hash(user_data.password)  
@@ -74,13 +77,14 @@ def signup_user(user_data: schemas.UserCreate, db: Session = Depends(database.ge
     db.add(new_wallet)  
     db.commit()  
 
-    # --- NEW: Send welcome email ---
-    email_service.send_welcome_email(new_user.email, new_user.name)
+    # 🟢 CRITICAL FIX: Run email service in the background
+    background_tasks.add_task(email_service.send_welcome_email, new_user.email, new_user.name)
 
     # Create JWT token  
     access_token = auth.create_access_token(  
         data={"sub": str(new_user.id)}  
     )  
+    # User gets token instantly, email is sent non-blocking
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/auth/login", response_model=schemas.Token)
@@ -103,11 +107,15 @@ def login_for_access_token(login_data: schemas.UserLogin, db: Session = Depends(
     )  
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- NEW: PASSWORD RESET ENDPOINTS ---
+# --- PASSWORD RESET ENDPOINTS ---
 @app.post("/auth/request-password-reset", response_model=schemas.PasswordResetResponse)
-def request_password_reset(request_data: schemas.RequestPasswordReset, db: Session = Depends(database.get_db)):
+def request_password_reset(
+    request_data: schemas.RequestPasswordReset, 
+    background_tasks: BackgroundTasks, # 🟢 ADDED: BackgroundTasks
+    db: Session = Depends(database.get_db)
+):
     """
-    Requests a password reset. Generates a reset token and sends it via email.
+    Requests a password reset. Generates a reset token and sends it via email in the background.
     """
     user = db.query(models.User).filter(models.User.email == request_data.email).first()
     
@@ -120,8 +128,8 @@ def request_password_reset(request_data: schemas.RequestPasswordReset, db: Sessi
     # Generate reset token
     reset_token = auth.create_password_reset_token(str(user.id), db)
     
-    # Send email with reset token
-    email_service.send_password_reset_email(user.email, reset_token)
+    # 🟢 CRITICAL FIX: Send email with reset token in the background
+    background_tasks.add_task(email_service.send_password_reset_email, user.email, reset_token)
     
     return schemas.PasswordResetResponse(
         message="If an account with that email exists, a password reset link will be sent."
@@ -165,7 +173,7 @@ def get_user_stats(current_user: models.User = Depends(auth.get_current_user), d
     """
     Fetches user statistics, ensuring LessonProgress counts only completed lessons.
     """
-    # 🟢 FIX 1: Filter LessonProgress by completed=True
+    # 🟢 FIX: Filter LessonProgress by completed=True
     lessons_completed = db.query(models.LessonProgress).filter(
         models.LessonProgress.user_id == current_user.id,
         models.LessonProgress.completed == True
@@ -228,7 +236,7 @@ def get_lesson_detail(lesson_id: str, db: Session = Depends(database.get_db), cu
         db.add(progress)  
         needs_commit = True
     
-    # 🟢 FIX 2: Ensure existing progress record is marked True
+    # 🟢 FIX: Ensure existing progress record is marked True
     elif not progress.completed:
         progress.completed = True
         needs_commit = True

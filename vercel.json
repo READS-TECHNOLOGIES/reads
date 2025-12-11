@@ -8,7 +8,10 @@
     {
       "src": "backend/main.py",
       "use": "@vercel/python",
-      "config": { "runtime": "python3.11" }
+      "config": { 
+        "runtime": "python3.11",
+        "maxLambdaSize": "15mb"
+      }
     }
   ],
   "routes": [
@@ -20,5 +23,11 @@
       "src": "/(.*)",
       "dest": "/dist/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "backend/main.py": {
+      "runtime": "python3.11",
+      "maxDuration": 10
+    }
+  }
 }

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+From fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -10,6 +10,7 @@ import os
 
 # CRITICAL FIX: Use relative imports for Vercel runtime environment
 from .app import models, schemas, auth, database, email_service
+from .app import cardano_utils # 🟢 NEW IMPORT FOR WALLET GENERATION
 
 # Initialize DB - WRAP THIS IN A TRY/EXCEPT BLOCK
 
@@ -59,6 +60,13 @@ def signup_user(
     if db.query(models.User).filter(models.User.email == user_data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # 🟢 NEW: GENERATE CARDANO WALLET ADDRESS
+    cardano_address, encrypted_skey = cardano_utils.generate_and_encrypt_cardano_wallet()
+    
+    # Optional check: If generation failed, proceed but log a warning.
+    if not cardano_address:
+         print("WARNING: Cardano wallet generation failed during signup.")
+
     # Hash password and create user  
     is_first_user = db.query(models.User).count() == 0  
 
@@ -67,7 +75,10 @@ def signup_user(
         name=user_data.name,  
         email=user_data.email,  
         password_hash=hashed_password,  
-        is_admin=is_first_user  
+        is_admin=is_first_user,
+        # 🟢 SAVE CARDANO WALLET DETAILS
+        cardano_address=cardano_address, 
+        encrypted_skey=encrypted_skey 
     )  
     db.add(new_user)  
     db.flush() # Flush to get the ID for the wallet  
@@ -118,19 +129,19 @@ def request_password_reset(
     Requests a password reset. Generates a reset token and sends it via email in the background.
     """
     user = db.query(models.User).filter(models.User.email == request_data.email).first()
-    
+
     if not user:
         # Don't reveal if email exists (security best practice)
         return schemas.PasswordResetResponse(
             message="If an account with that email exists, a password reset link will be sent."
         )
-    
+
     # Generate reset token
     reset_token = auth.create_password_reset_token(str(user.id), db)
-    
+
     # 🟢 CRITICAL FIX: Send email with reset token in the background
     background_tasks.add_task(email_service.send_password_reset_email, user.email, reset_token)
-    
+
     return schemas.PasswordResetResponse(
         message="If an account with that email exists, a password reset link will be sent."
     )
@@ -142,23 +153,23 @@ def reset_password(reset_data: schemas.ResetPassword, db: Session = Depends(data
     """
     # Verify the token and get the user
     user, reset_token = auth.verify_password_reset_token(reset_data.token, db)
-    
+
     # Validate new password (at least 8 characters)
     if len(reset_data.new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters long"
         )
-    
+
     # Hash the new password and update user
     new_password_hash = auth.get_password_hash(reset_data.new_password)
     user.password_hash = new_password_hash
-    
+
     # Mark the token as used
     reset_token.used = True
-    
+
     db.commit()
-    
+
     return schemas.PasswordResetResponse(
         message="Password reset successful. You can now log in with your new password."
     )
@@ -178,7 +189,7 @@ def get_user_stats(current_user: models.User = Depends(auth.get_current_user), d
         models.LessonProgress.user_id == current_user.id,
         models.LessonProgress.completed == True
     ).count()
-    
+
     quizzes_taken = db.query(models.QuizResult).filter(models.QuizResult.user_id == current_user.id).count()
 
     return schemas.UserStats(  
@@ -235,12 +246,12 @@ def get_lesson_detail(lesson_id: str, db: Session = Depends(database.get_db), cu
         )  
         db.add(progress)  
         needs_commit = True
-    
+
     # 🟢 FIX: Ensure existing progress record is marked True
     elif not progress.completed:
         progress.completed = True
         needs_commit = True
-        
+
     if needs_commit:
         try:  
             db.commit()  
@@ -436,98 +447,4 @@ def get_all_lessons(db: Session = Depends(database.get_db), current_admin: model
     return lessons
 
 @app.post("/admin/lessons", response_model=schemas.LessonDetail, status_code=status.HTTP_201_CREATED)
-def create_lesson(lesson_data: schemas.LessonCreate, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
-    """Creates a new lesson (Admin Only)."""
-    new_lesson = models.Lesson(**lesson_data.model_dump())
-    db.add(new_lesson)
-    db.commit()
-    db.refresh(new_lesson)
-    return new_lesson
-
-# DELETE /admin/lessons/{lesson_id}
-
-@app.delete("/admin/lessons/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_lesson(lesson_id: str, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
-    """Deletes a lesson and all associated records (Admin Only)."""
-
-    try:  
-        lesson_uuid = UUID(lesson_id)  
-    except ValueError:  
-        raise HTTPException(status_code=400, detail="Invalid lesson ID format")  
-
-    # 1. Find the lesson  
-    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_uuid).first()  
-    if not lesson:  
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")  
-
-    # 2. Delete ALL dependent records explicitly  
-    db.query(models.LessonProgress).filter(models.LessonProgress.lesson_id == lesson_uuid).delete(synchronize_session=False)  
-    db.query(models.QuizQuestion).filter(models.QuizQuestion.lesson_id == lesson_uuid).delete(synchronize_session=False)  
-    db.query(models.QuizResult).filter(models.QuizResult.lesson_id == lesson_uuid).delete(synchronize_session=False)  
-    db.query(models.Reward).filter(models.Reward.lesson_id == lesson_uuid).delete(synchronize_session=False)  
-
-    # 3. Delete the main Lesson  
-    db.delete(lesson)  
-
-    # 4. Commit all deletions  
-    db.commit()  
-
-    return
-
-@app.post("/admin/quiz", status_code=status.HTTP_201_CREATED)
-def upload_quiz(quiz_request: schemas.QuizCreateRequest, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
-    """Creates/Updates the quiz questions for a lesson (Admin Only)."""
-
-    lesson_id = quiz_request.lesson_id  
-    lesson_id_str = str(lesson_id)  
-
-    # 1. Verify Lesson exists  
-    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()  
-
-    if not lesson:  
-        print(f"Quiz Upload Fail (404): Lesson ID {lesson_id_str} not found.")  
-        raise HTTPException(status_code=404, detail="Lesson not found for quiz association")  
-
-    # 2. Delete existing quiz questions for this lesson (to ensure clean update/overwrite)  
-    db.query(models.QuizQuestion).filter(models.QuizQuestion.lesson_id == lesson_id).delete(synchronize_session=False)  
-
-    # 3. Insert new questions  
-    new_questions = []  
-    for q_data in quiz_request.questions:  
-
-        new_q = models.QuizQuestion(  
-            lesson_id=lesson_id,   
-            question=q_data.question,  
-            options=q_data.options,  
-            correct_option=q_data.correct_option  
-        )  
-        new_questions.append(new_q)  
-
-    db.add_all(new_questions)  
-
-    # 4. Attempt commit and handle potential database errors  
-    try:  
-        db.commit()  
-    except Exception as e:  
-        db.rollback()  
-        print(f"Database error (500) during quiz upload: {e}")  
-        raise HTTPException(status_code=500, detail="Database integrity error during quiz save.")  
-
-    return {"message": f"Successfully added {len(new_questions)} quiz questions for lesson {lesson_id_str}"}
-
-# DELETE /admin/quiz/{lesson_id}
-
-@app.delete("/admin/quiz/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_quiz(lesson_id: str, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
-    """Deletes all quiz questions associated with a lesson (Admin Only)."""
-
-    try:  
-        lesson_uuid = UUID(lesson_id)  
-    except ValueError:  
-        raise HTTPException(status_code=400, detail="Invalid lesson ID format")  
-
-    # Delete Quiz Questions  
-    db.query(models.QuizQuestion).filter(models.QuizQuestion.lesson_id == lesson_uuid).delete(synchronize_session=False)  
-    db.commit()  
-
-    return
+def create_lesson(lesson_data: schemas.LessonCreate, db: Session = Depends(database.get_db), current_

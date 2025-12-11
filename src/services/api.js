@@ -101,6 +101,31 @@ export const api = {
                 joined: data.created_at,
             };
         },
+        
+        // 🟢 NEW: Get current user with Cardano wallet address
+        getCurrentUser: async () => {
+            const token = localStorage.getItem('access_token');
+            if (!token) return null;
+
+            const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeader() });
+
+            if (!res.ok) {
+                return null;
+            }
+
+            return res.json();
+        },
+
+        // 🟢 NEW: Get just wallet info
+        getWallet: async () => {
+            const res = await fetch(`${API_URL}/auth/wallet`, { headers: getAuthHeader() });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Wallet Info');
+            }
+            
+            return res.json();
+        },
     },
 
     // --- PROFILE ---
@@ -202,10 +227,10 @@ export const api = {
                 } catch (e) {
                     console.error("Non-fatal error fetching balance:", e.message);
                 }
-                return 0;
+                return { token_balance: 0 }; // 🟢 FIXED: Return object with token_balance
             }
             const data = await res.json();
-            return data.token_balance;
+            return data; // 🟢 FIXED: Return full object, not just token_balance
         },
         getHistory: async () => {
             const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });

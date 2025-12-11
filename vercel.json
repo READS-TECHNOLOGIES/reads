@@ -14,9 +14,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.1",
-    
-    // --- CRITICAL FIX: Material-UI (MUI) Dependencies ---
-    // These packages resolve the Rollup failed to resolve error
     "@mui/material": "^5.15.15",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",

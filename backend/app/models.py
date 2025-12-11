@@ -17,6 +17,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # 🟢 NEW FIELDS FOR CARDANO WALLET
+    cardano_address = Column(String, nullable=True) # Public receiving address (e.g., addr_test...)
+    encrypted_skey = Column(String, nullable=True)  # Encrypted private key (Signing Key)
+
     # Relationships
     wallet = relationship("Wallet", back_populates="user", uselist=False)
     progress = relationship("LessonProgress", back_populates="user")
@@ -65,7 +69,7 @@ class LessonProgress(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # 🚀 IMPROVEMENT: Ensure only one progress entry per user/lesson combination
     __table_args__ = (
         UniqueConstraint('user_id', 'lesson_id', name='uq_user_lesson_progress'),

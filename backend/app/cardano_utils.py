@@ -122,9 +122,10 @@ def generate_and_encrypt_cardano_wallet() -> Tuple[str, str]:
         print("✅ Verification key derived")
 
         print("Step 3: Creating testnet address...")
+        # Network.TESTNET is the correct attribute for preprod testnet
         address = Address(
             payment_part=payment_verification_key.hash(), 
-            network=Network.TESTNET_PREPROD 
+            network=Network.TESTNET
         )
         print(f"✅ Address created: {str(address)[:30]}...")
 

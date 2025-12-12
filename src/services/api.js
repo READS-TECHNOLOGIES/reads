@@ -97,6 +97,7 @@ export const api = {
                 name: data.name,
                 email: data.email,
                 is_admin: data.is_admin,
+                cardano_address: data.cardano_address, // Include cardano_address
                 avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.name}`, 
                 joined: data.created_at,
             };
@@ -317,4 +318,23 @@ export const api = {
             return res.json();
         },
     }
+};
+
+// 🟢 NEW: Add fetchProtectedData export for WalletModule compatibility
+export const fetchProtectedData = async (endpoint, token, options = {}) => {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+        method: options.method || 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    if (!res.ok) {
+        await handleFailedResponse(res, `Fetch ${endpoint}`);
+    }
+
+    return res.json();
 };

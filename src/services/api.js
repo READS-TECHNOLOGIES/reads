@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 // Vercel routes our /api path to the Python backend function
-const API_URL = "/api";
+const API_URL = "/api"; 
 
 // Function to get the Authorization header
 const getAuthHeader = () => {
@@ -10,7 +10,7 @@ const getAuthHeader = () => {
         // If no token, return headers that will fail authentication on the backend
         return { 'Content-Type': 'application/json' };
     }
-    return {
+    return { 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
     };
@@ -38,10 +38,10 @@ const handleFailedResponse = async (res, action) => {
         errorDetail = data.detail || errorDetail;
     } catch (e) {
         const text = await res.text();
-        errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`;
+        errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`; 
     }
 
-    console.error(`${action} Failed: ${errorDetail}`);
+    console.error(`${action} Failed: ${errorDetail}`); 
     throw new Error(errorDetail);
 }
 
@@ -61,7 +61,7 @@ export const api = {
 
             const data = await res.json();
             localStorage.setItem('access_token', data.access_token);
-            return data;
+            return data; 
         },
         signup: async (name, email, password) => {
             const res = await fetch(`${API_URL}/auth/signup`, {
@@ -82,7 +82,7 @@ export const api = {
             const token = localStorage.getItem('access_token');
             if (!token) return null;
 
-            // Uses getAuthHeader and relies on the new handleFailedResponse
+            // Uses getAuthHeader and relies on the new handleFailedResponse 
             // to manage token removal if 401 occurs.
             const res = await fetch(`${API_URL}/user/profile`, { headers: getAuthHeader() });
 
@@ -92,14 +92,13 @@ export const api = {
             }
 
             const data = await res.json();
-            // IMPORTANT: The backend MUST return the 'cardano_address' key here for the frontend to work.
             return {
                 id: data.id,
                 name: data.name,
                 email: data.email,
                 is_admin: data.is_admin,
                 cardano_address: data.cardano_address, // Include cardano_address
-                avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.name}`,
+                avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.name}`, 
                 joined: data.created_at,
             };
         },
@@ -139,8 +138,8 @@ export const api = {
 
             const data = await res.json();
             return data.map(cat => ({
-                id: cat.category.toLowerCase(),
-                name: cat.category,
+                id: cat.category.toLowerCase(), 
+                name: cat.category, 
                 count: cat.count,
                 color: cat.category === 'JAMB' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
             }));
@@ -174,7 +173,7 @@ export const api = {
 
             // Uses handleFailedResponse, which now catches 401 (AuthRequired) and 409 (QuizAlreadyCompleted)
             if (!res.ok) {
-                await handleFailedResponse(res, 'Fetch Quiz Questions');
+                await handleFailedResponse(res, 'Fetch Quiz Questions'); 
             }
 
             return res.json();
@@ -204,10 +203,10 @@ export const api = {
                 } catch (e) {
                     console.error("Non-fatal error fetching balance:", e.message);
                 }
-                return { token_balance: 0 }; // Ensure a structure is returned if not ok
+                return 0;
             }
             const data = await res.json();
-            return data;
+            return data.token_balance;
         },
         getHistory: async () => {
             const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });

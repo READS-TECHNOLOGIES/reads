@@ -8,8 +8,13 @@ import CheckIcon from '@mui/icons-material/Check';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
+// 🟢 CRITICAL FIX ADDED: Import the useAuth hook
+import { useAuth } from '../context/AuthContext'; 
+// If '../context/AuthContext' is wrong, you must replace it with the correct path to your AuthContext file.
+
 const WalletModule = () => {
-    const { token } = useAuth();
+    // This line is now correctly defined by the import above
+    const { token } = useAuth(); 
     const [balance, setBalance] = useState(0);
     const [history, setHistory] = useState([]);
     const [summary, setSummary] = useState({});

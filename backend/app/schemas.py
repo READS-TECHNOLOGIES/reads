@@ -27,19 +27,22 @@ class ResetPassword(BaseModel):
 
 class PasswordResetResponse(BaseModel):
     message: str
-
 # --- User & Wallet Schemas ---
 class UserProfile(BaseModel):
     id: UUID
     name: str
     email: EmailStr
-    is_admin: bool # 💡 UPGRADE: Admin Flag
+    is_admin: bool
     created_at: datetime
+    # 🟢 CRITICAL FIX: Add the cardano_address field
+    cardano_address: Optional[str] = None 
 
     class Config:
         from_attributes = True
 
 class TokenBalance(BaseModel):
+# ... (rest of the file remains the same)
+
     token_balance: int
 
 class UserStats(BaseModel):

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Paper, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
-import { fetchProtectedData } from '../api';
+import { fetchProtectedData } from '../../services/api'; 
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';

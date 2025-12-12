@@ -176,7 +176,17 @@ def reset_password(reset_data: schemas.ResetPassword, db: Session = Depends(data
 # --- END: PASSWORD RESET ENDPOINTS ---
 
 @app.get("/user/profile", response_model=schemas.UserProfile)
-def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+def read_users_me(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db) # 🟢 NEW DEPENDENCY
+):
+    """
+    Retrieves the current user's profile, forcing a database refresh to ensure 
+    the cardano_address is always the latest value.
+    """
+    # 🟢 CRITICAL FIX: Refresh the user object to pull latest data from the database
+    db.refresh(current_user) 
+    
     return current_user
 
 @app.get("/user/stats", response_model=schemas.UserStats)

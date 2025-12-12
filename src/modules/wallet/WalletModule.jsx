@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Paper, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
-import { fetchProtectedData } from '../../services/api'; 
+// 🟢 CORRECTED PATH: Use the correct relative path to your API file
+import { fetchProtectedData, api } from '../../services/api'; 
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -8,37 +9,49 @@ import CheckIcon from '@mui/icons-material/Check';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
-// 🟢 CRITICAL FIX ADDED: Import the useAuth hook
-import { useAuth } from '../context/AuthContext'; 
-// If '../context/AuthContext' is wrong, you must replace it with the correct path to your AuthContext file.
+// 🟢 WalletModule now receives the user object from App.jsx
+const WalletModule = ({ user, balance, onUpdateBalance }) => { 
+    // We can infer the token using the user object, but for API calls, 
+    // we must retrieve the token explicitly from localStorage 
+    // (matching the logic in api.js) or pass it down.
+    
+    // For simplicity, we use the user object to get the address immediately
+    const initialAddress = user?.cardano_address || '';
 
-const WalletModule = () => {
-    // This line is now correctly defined by the import above
-    const { token } = useAuth(); 
-    const [balance, setBalance] = useState(0);
+    const [currentBalance, setCurrentBalance] = useState(balance);
     const [history, setHistory] = useState([]);
     const [summary, setSummary] = useState({});
-    const [walletAddress, setWalletAddress] = useState('');
+    const [walletAddress, setWalletAddress] = useState(initialAddress);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [copied, setCopied] = useState(false);
     const [showFullAddress, setShowFullAddress] = useState(false);
 
+    // 💡 Helper to retrieve token from LocalStorage, matching api.js logic
+    const getToken = () => localStorage.getItem('access_token');
+
     const fetchData = useCallback(async () => {
-        if (!token) return;
+        const token = getToken();
+        if (!token) {
+            setLoading(false);
+            setError("Authentication token not found.");
+            return;
+        }
 
         setLoading(true);
         setError(null);
 
         try {
+            // Fetch all data concurrently using api object and token from localStorage
             const [balanceData, historyData, summaryData, profileData] = await Promise.all([
-                fetchProtectedData('/wallet/balance', token),
-                fetchProtectedData('/wallet/history', token),
-                fetchProtectedData('/rewards/summary', token),
-                fetchProtectedData('/user/profile', token)
+                api.wallet.getBalance(), // api functions retrieve token internally
+                api.wallet.getHistory(), // api functions retrieve token internally
+                fetchProtectedData('/rewards/summary', token), // Explicitly use fetchProtectedData if necessary
+                api.auth.me() // Re-fetch profile in case address was updated since App mount
             ]);
 
-            setBalance(balanceData.token_balance);
+            setCurrentBalance(balanceData);
+            onUpdateBalance(balanceData); // Update parent state
             setHistory(historyData);
             setSummary(summaryData);
 
@@ -47,15 +60,26 @@ const WalletModule = () => {
             }
         } catch (err) {
             console.error("Wallet data fetching failed:", err);
-            setError(err.message || "Failed to load wallet data.");
+            // Handle the specific 'AuthenticationRequired' error thrown by api.js
+            if (err.message === 'AuthenticationRequired') {
+                 // The parent App component should handle the actual logout based on its periodic checks or navigation back to 'login'.
+                 setError("Session expired. Please re-login.");
+            } else {
+                 setError(err.message || "Failed to load wallet data.");
+            }
         } finally {
             setLoading(false);
         }
-    }, [token]);
+    }, [onUpdateBalance]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        // Run fetch only if user is logged in
+        if (user) {
+            fetchData();
+        } else {
+            setLoading(false);
+        }
+    }, [fetchData, user]);
 
     const handleCopy = () => {
         if (walletAddress) {
@@ -113,7 +137,7 @@ const WalletModule = () => {
                         </IconButton>
                     </Tooltip>
                 </Box>
-                
+
                 <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
@@ -153,7 +177,7 @@ const WalletModule = () => {
                         {copied ? 'Copied!' : 'Copy'}
                     </Button>
                 </Box>
-                
+
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                     💡 Use this address to receive ADA and NFTs on the Cardano Preprod Testnet
                 </Typography>
@@ -164,7 +188,7 @@ const WalletModule = () => {
                     $READS Token Balance
                 </Typography>
                 <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold' }}>
-                    {balance.toLocaleString()}
+                    {currentBalance.toLocaleString()}
                 </Typography>
             </Box>
 

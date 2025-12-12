@@ -156,7 +156,7 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
             {/* BALANCE SECTION */}
             <div className="flex justify-between items-center my-6 py-3 border-y border-gray-200 dark:border-slate-700">
                 <Typography variant="h5" className="text-gray-700 dark:text-gray-300 font-semibold">
-                    $READS Token Balance
+                    $READS Balance
                 </Typography>
                 <Typography variant="h3" className="text-indigo-600 dark:text-indigo-400 font-extrabold">
                     {currentBalance.toLocaleString()}

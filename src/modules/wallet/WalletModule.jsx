@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
-// 🟢 CORRECTED PATH: Use the correct relative path to your API file
+// We still need MUI components, but we will style them using Tailwind classes
+import { Box, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
 import { fetchProtectedData, api } from '../../services/api'; 
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
@@ -9,13 +9,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
-// 🟢 WalletModule now receives the user object from App.jsx
 const WalletModule = ({ user, balance, onUpdateBalance }) => { 
-    // We can infer the token using the user object, but for API calls, 
-    // we must retrieve the token explicitly from localStorage 
-    // (matching the logic in api.js) or pass it down.
-    
-    // For simplicity, we use the user object to get the address immediately
     const initialAddress = user?.cardano_address || '';
 
     const [currentBalance, setCurrentBalance] = useState(balance);
@@ -27,7 +21,6 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     const [copied, setCopied] = useState(false);
     const [showFullAddress, setShowFullAddress] = useState(false);
 
-    // 💡 Helper to retrieve token from LocalStorage, matching api.js logic
     const getToken = () => localStorage.getItem('access_token');
 
     const fetchData = useCallback(async () => {
@@ -42,16 +35,16 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
         setError(null);
 
         try {
-            // Fetch all data concurrently using api object and token from localStorage
+            // These calls use the token internally via api.js
             const [balanceData, historyData, summaryData, profileData] = await Promise.all([
-                api.wallet.getBalance(), // api functions retrieve token internally
-                api.wallet.getHistory(), // api functions retrieve token internally
-                fetchProtectedData('/rewards/summary', token), // Explicitly use fetchProtectedData if necessary
-                api.auth.me() // Re-fetch profile in case address was updated since App mount
+                api.wallet.getBalance(), 
+                api.wallet.getHistory(), 
+                fetchProtectedData('/rewards/summary', token), 
+                api.auth.me()
             ]);
 
-            setCurrentBalance(balanceData);
-            onUpdateBalance(balanceData); // Update parent state
+            setCurrentBalance(balanceData.token_balance); // Ensure you are pulling the value out
+            onUpdateBalance(balanceData.token_balance);
             setHistory(historyData);
             setSummary(summaryData);
 
@@ -60,9 +53,7 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
             }
         } catch (err) {
             console.error("Wallet data fetching failed:", err);
-            // Handle the specific 'AuthenticationRequired' error thrown by api.js
             if (err.message === 'AuthenticationRequired') {
-                 // The parent App component should handle the actual logout based on its periodic checks or navigation back to 'login'.
                  setError("Session expired. Please re-login.");
             } else {
                  setError(err.message || "Failed to load wallet data.");
@@ -73,7 +64,6 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     }, [onUpdateBalance]);
 
     useEffect(() => {
-        // Run fetch only if user is logged in
         if (user) {
             fetchData();
         } else {
@@ -100,31 +90,26 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     };
 
     if (loading) {
-        return <CircularProgress sx={{ display: 'block', margin: '20px auto' }} />;
+        return <CircularProgress className="block mx-auto my-5 dark:text-indigo-400" />;
     }
 
     if (error) {
-        return <Alert severity="error">Error: {error}</Alert>;
+        return <Alert severity="error">{error}</Alert>;
     }
 
     return (
-        <Paper sx={{ p: 3, maxWidth: 800, margin: '20px auto' }}>
-            <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-                <AccountBalanceWalletIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+            {/* Title */}
+            <Typography variant="h4" className="mb-4 text-gray-800 dark:text-white font-bold">
+                <AccountBalanceWalletIcon className="align-middle mr-2 text-indigo-500" />
                 Your $READS Wallet
             </Typography>
 
-            {/* CARDANO WALLET ADDRESS SECTION */}
-            <Box sx={{ 
-                p: 2.5, 
-                mb: 3, 
-                border: '2px solid #3f51b5', 
-                borderRadius: 2, 
-                backgroundColor: '#f5f7ff',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                    <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold', color: '#3f51b5' }}>
+            {/* CARDANO WALLET ADDRESS SECTION (Tailwind conversion) */}
+            <div className="p-4 mb-5 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg bg-indigo-50 dark:bg-slate-700 shadow-inner">
+                
+                <div className="flex items-center justify-between mb-3">
+                    <Typography variant="subtitle1" className="font-bold text-indigo-700 dark:text-indigo-400">
                         🔗 Cardano Wallet Address
                     </Typography>
                     <Tooltip title={showFullAddress ? "Hide full address" : "Show full address"}>
@@ -132,31 +117,18 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                             onClick={toggleAddressVisibility} 
                             size="small"
                             disabled={!walletAddress}
+                            className="dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-slate-600 transition-colors"
                         >
                             {showFullAddress ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
                         </IconButton>
                     </Tooltip>
-                </Box>
+                </div>
 
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    backgroundColor: 'white',
-                    p: 1.5,
-                    borderRadius: 1,
-                    border: '1px solid #e0e0e0'
-                }}>
+                <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                     <Typography 
                         variant="body2" 
-                        sx={{ 
-                            fontFamily: 'monospace', 
-                            fontSize: showFullAddress ? '0.75rem' : '0.875rem',
-                            wordBreak: showFullAddress ? 'break-all' : 'normal',
-                            flexGrow: 1, 
-                            mr: 2,
-                            color: '#424242'
-                        }}
+                        className={`font-mono flex-grow mr-4 truncate ${showFullAddress ? 'text-xs md:text-sm' : 'text-sm'} text-gray-700 dark:text-gray-300`}
+                        // Note: Using Box/div here instead of Typography with break-all for better Tailwind control
                     >
                         {walletAddress ? formatAddress(walletAddress) : 'No address available'}
                     </Typography>
@@ -166,69 +138,77 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                         size="small"
                         startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
                         disabled={!walletAddress}
-                        sx={{ 
-                            minWidth: '100px',
-                            backgroundColor: copied ? '#4caf50' : '#3f51b5',
-                            '&:hover': {
-                                backgroundColor: copied ? '#45a049' : '#303f9f'
-                            }
-                        }}
+                        className={`min-w-[100px] text-white font-medium ${
+                            copied 
+                            ? 'bg-green-500 hover:bg-green-600' 
+                            : 'bg-indigo-600 hover:bg-indigo-700'
+                        } transition-colors shadow-md`}
                     >
                         {copied ? 'Copied!' : 'Copy'}
                     </Button>
-                </Box>
+                </div>
 
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                <Typography variant="caption" className="block mt-2 text-gray-500 dark:text-gray-400">
                     💡 Use this address to receive ADA and NFTs on the Cardano Preprod Testnet
                 </Typography>
-            </Box>
+            </div>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" color="primary">
+            {/* BALANCE SECTION */}
+            <div className="flex justify-between items-center my-6 py-3 border-y border-gray-200 dark:border-slate-700">
+                <Typography variant="h5" className="text-gray-700 dark:text-gray-300 font-semibold">
                     $READS Token Balance
                 </Typography>
-                <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold' }}>
+                <Typography variant="h3" className="text-indigo-600 dark:text-indigo-400 font-extrabold">
                     {currentBalance.toLocaleString()}
                 </Typography>
-            </Box>
+            </div>
 
-            <Divider sx={{ my: 3 }} />
-
-            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
-                <HistoryToggleOffIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+            {/* REWARD HISTORY */}
+            <Typography variant="h5" className="mb-3 text-gray-700 dark:text-white font-semibold">
+                <HistoryToggleOffIcon className="align-middle mr-2 text-indigo-500" />
                 Reward History
             </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 2 }}>
+            <div className="flex justify-around mb-4 p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50 text-gray-700 dark:text-gray-300">
                 <Typography variant="body1">
                     <strong>Total Earned:</strong> {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0}
                 </Typography>
                 <Typography variant="body1">
                     <strong>Quizzes Passed:</strong> {summary.total_quizzes_passed || 0}
                 </Typography>
-            </Box>
+            </div>
 
-            <List sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #eee', borderRadius: 1, mt: 2 }}>
+            {/* List */}
+            <List className="max-h-80 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg mt-2 divide-y divide-gray-100 dark:divide-slate-700">
                 {history.length === 0 ? (
-                    <ListItem>
-                        <ListItemText primary="No reward history yet." />
+                    <ListItem className="py-3 bg-white dark:bg-slate-800">
+                        <ListItemText 
+                            primary="No reward history yet." 
+                            className="text-gray-500 dark:text-gray-400 text-center"
+                        />
                     </ListItem>
                 ) : (
                     history.map((item) => (
-                        <ListItem key={item.id} secondaryAction={
-                            <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>
-                                +{item.tokens_earned} $READS
-                            </Typography>
-                        }>
+                        <ListItem 
+                            key={item.id} 
+                            secondaryAction={
+                                <Typography variant="body2" className="text-green-600 dark:text-green-400 font-bold">
+                                    +{item.tokens_earned} $READS
+                                </Typography>
+                            }
+                            className="py-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                        >
                             <ListItemText
                                 primary={item.lesson_title}
                                 secondary={`Source: ${item.type} | Date: ${new Date(item.created_at).toLocaleDateString()}`}
+                                primaryTypographyProps={{ className: 'text-gray-800 dark:text-gray-200 font-medium' }}
+                                secondaryTypographyProps={{ className: 'text-gray-500 dark:text-gray-400 text-sm' }}
                             />
                         </ListItem>
                     ))
                 )}
             </List>
-        </Paper>
+        </div>
     );
 };
 

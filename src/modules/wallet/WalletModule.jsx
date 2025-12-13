@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
-import { fetchProtectedData, api } from '../../services/api';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import HistoryToggleOffIcon from '@mui/icons-material/HistoryToggleOff';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { api } from '../../services/api';
+import { Wallet, History, Copy, Check, Eye, EyeOff, RefreshCw, AlertCircle } from 'lucide-react';
 
 const WalletModule = ({ user, balance, onUpdateBalance }) => {
     const initialAddress = user?.cardano_address || null;
@@ -109,134 +103,155 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     if (loading) {
         return (
             <div className="flex justify-center items-center p-8">
-                <CircularProgress className="text-indigo-500" />
+                <RefreshCw size={32} className="animate-spin text-indigo-500" />
             </div>
         );
     }
 
     if (error) {
         return (
-            <Alert severity="error" className="m-4">
-                {error}
-                <button 
-                    onClick={fetchData} 
-                    className="ml-4 text-sm underline hover:no-underline"
-                >
-                    Retry
-                </button>
-            </Alert>
+            <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-xl">
+                <div className="flex items-start">
+                    <AlertCircle size={20} className="text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-red-800 dark:text-red-200">Error Loading Wallet</h3>
+                        <p className="text-sm text-red-600 dark:text-red-300 mt-1">{error}</p>
+                        <button 
+                            onClick={fetchData}
+                            className="mt-3 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium flex items-center"
+                        >
+                            <RefreshCw size={16} className="mr-1" />
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
         );
     }
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+        <div className="space-y-6 animate-fade-in">
             {/* Title */}
-            <Typography variant="h4" className="mb-4 text-gray-800 dark:text-white font-bold">
-                <AccountBalanceWalletIcon className="align-middle mr-2 text-indigo-500" />
+            <h2 className="text-3xl font-bold dark:text-white flex items-center">
+                <Wallet size={32} className="mr-3 text-indigo-600" />
                 Your $READS Wallet
-            </Typography>
+            </h2>
 
             {/* CARDANO WALLET ADDRESS SECTION */}
-            <div className="p-4 mb-5 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg bg-indigo-50 dark:bg-slate-700 shadow-inner">
-                <div className="flex items-center justify-between mb-3">
-                    <Typography variant="subtitle1" className="font-bold text-indigo-700 dark:text-indigo-400">
+            <div className="p-6 border-2 border-indigo-500 rounded-xl bg-indigo-50 dark:bg-slate-800 shadow-lg">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 flex items-center">
                         🔗 Cardano Wallet Address
-                    </Typography>
-                    <Tooltip title={showFullAddress ? "Hide full address" : "Show full address"}>
-                        <IconButton
-                            onClick={toggleAddressVisibility}
-                            size="small"
-                            disabled={!walletAddress}
-                            className="dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-slate-600 transition-colors"
-                        >
-                            {showFullAddress ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                        </IconButton>
-                    </Tooltip>
+                    </h3>
+                    <button
+                        onClick={toggleAddressVisibility}
+                        disabled={!walletAddress}
+                        className="p-2 rounded-full hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={showFullAddress ? "Hide full address" : "Show full address"}
+                    >
+                        {showFullAddress ? <EyeOff size={20} className="text-indigo-600 dark:text-indigo-400" /> : <Eye size={20} className="text-indigo-600 dark:text-indigo-400" />}
+                    </button>
                 </div>
 
-                <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
-                    <Typography
-                        variant="body2"
-                        className={`font-mono flex-grow mr-4 ${showFullAddress ? 'break-all text-xs md:text-sm' : 'truncate text-sm'} text-gray-700 dark:text-gray-300`}
-                    >
+                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-600">
+                    <p className={`font-mono flex-grow mr-4 ${showFullAddress ? 'break-all text-xs md:text-sm' : 'truncate text-sm'} text-gray-700 dark:text-gray-300`}>
                         {formatAddress(walletAddress)}
-                    </Typography>
-                    <Button
+                    </p>
+                    <button
                         onClick={handleCopy}
-                        variant="contained"
-                        size="small"
-                        startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
                         disabled={!walletAddress}
-                        className={`min-w-[100px] text-white font-medium ${
+                        className={`min-w-[100px] px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${
                             copied
                             ? 'bg-green-500 hover:bg-green-600'
                             : 'bg-indigo-600 hover:bg-indigo-700'
-                        } transition-colors shadow-md`}
+                        }`}
                     >
-                        {copied ? 'Copied!' : 'Copy'}
-                    </Button>
+                        {copied ? (
+                            <>
+                                <Check size={16} className="mr-1" />
+                                Copied!
+                            </>
+                        ) : (
+                            <>
+                                <Copy size={16} className="mr-1" />
+                                Copy
+                            </>
+                        )}
+                    </button>
                 </div>
 
-                <Typography variant="caption" className="block mt-2 text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                     💡 Use this address to receive ADA and NFTs on the Cardano Preprod Testnet
-                </Typography>
+                </p>
             </div>
 
             {/* BALANCE SECTION */}
-            <div className="flex justify-between items-center my-6 py-3 border-y border-gray-200 dark:border-slate-700">
-                <Typography variant="h5" className="text-gray-700 dark:text-gray-300 font-semibold">
+            <div className="flex justify-between items-center p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700">
+                <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300">
                     $READS Balance
-                </Typography>
-                <Typography variant="h3" className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+                </h3>
+                <p className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">
                     {currentBalance.toLocaleString()}
-                </Typography>
+                </p>
             </div>
 
             {/* REWARD HISTORY */}
-            <Typography variant="h5" className="mb-3 text-gray-700 dark:text-white font-semibold">
-                <HistoryToggleOffIcon className="align-middle mr-2 text-indigo-500" />
-                Reward History
-            </Typography>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-6">
+                <h3 className="text-2xl font-bold text-gray-700 dark:text-white mb-4 flex items-center">
+                    <History size={24} className="mr-2 text-indigo-500" />
+                    Reward History
+                </h3>
 
-            <div className="flex justify-around mb-4 p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50 text-gray-700 dark:text-gray-300">
-                <Typography variant="body1">
-                    <strong>Total Earned:</strong> {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0}
-                </Typography>
-                <Typography variant="body1">
-                    <strong>Quizzes Passed:</strong> {summary.total_quizzes_passed || 0}
-                </Typography>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 bg-indigo-50 dark:bg-slate-700 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Total Earned</p>
+                        <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0} $READS
+                        </p>
+                    </div>
+                    <div className="p-4 bg-green-50 dark:bg-slate-700 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Quizzes Passed</p>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            {summary.total_quizzes_passed || 0}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Transaction History List */}
+                <div className="border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                    {history.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                            <History size={48} className="mx-auto mb-3 opacity-30" />
+                            <p>No transaction history yet.</p>
+                            <p className="text-sm mt-1">Complete quizzes to earn $READS tokens!</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-200 dark:divide-slate-700">
+                            {history.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="p-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex justify-between items-center"
+                                >
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-gray-800 dark:text-gray-200">
+                                            {item.lesson_title || 'Reward'}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {item.type || 'Unknown'} • {new Date(item.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                                            +{item.tokens_earned} $READS
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
-
-            {/* Transaction History List */}
-            <List className="max-h-80 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg mt-2 divide-y divide-gray-100 dark:divide-slate-700">
-                {history.length === 0 ? (
-                    <ListItem className="py-3 bg-white dark:bg-slate-800">
-                        <ListItemText
-                            primary="No transaction history yet. Complete quizzes to earn $READS tokens!"
-                            className="text-gray-500 dark:text-gray-400 text-center"
-                        />
-                    </ListItem>
-                ) : (
-                    history.map((item) => (
-                        <ListItem
-                            key={item.id}
-                            secondaryAction={
-                                <Typography variant="body2" className="text-green-600 dark:text-green-400 font-bold">
-                                    +{item.tokens_earned} $READS
-                                </Typography>
-                            }
-                            className="py-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                        >
-                            <ListItemText
-                                primary={item.lesson_title || 'Reward'}
-                                secondary={`Source: ${item.type || 'Unknown'} | Date: ${new Date(item.created_at).toLocaleDateString()}`}
-                                primaryTypographyProps={{ className: 'text-gray-800 dark:text-gray-200 font-medium' }}
-                                secondaryTypographyProps={{ className: 'text-gray-500 dark:text-gray-400 text-sm' }}
-                            />
-                        </ListItem>
-                    ))
-                )}
-            </List>
         </div>
     );
 };

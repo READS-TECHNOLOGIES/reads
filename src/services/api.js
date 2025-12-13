@@ -179,17 +179,31 @@ export const api = {
             return res.json();
         },
         submitQuiz: async (lessonId, answers) => {
-            const res = await fetch(`${API_URL}/quiz/submit`, {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ lesson_id: lessonId, answers })
-            });
+            console.log('🔵 submitQuiz called with:', { lessonId, answers });
+            
+            try {
+                const res = await fetch(`${API_URL}/quiz/submit`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ lesson_id: lessonId, answers })
+                });
 
-            if (!res.ok) {
-                await handleFailedResponse(res, 'Submit Quiz');
+                console.log('🔵 Quiz submit response status:', res.status);
+                console.log('🔵 Quiz submit response ok:', res.ok);
+
+                if (!res.ok) {
+                    console.log('🔴 Response not OK, handling error...');
+                    await handleFailedResponse(res, 'Submit Quiz');
+                }
+
+                const data = await res.json();
+                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
+                return data;
+                
+            } catch (error) {
+                console.error('🔴 Quiz submit FAILED with error:', error);
+                throw error;
             }
-
-            return res.json();
         }
     },
 

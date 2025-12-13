@@ -30,8 +30,11 @@ const CompletedState = ({ lessonTitle, onNavigate }) => (
 const ResultSummary = ({ result, questions, userAnswers, lessonTitle, onNavigate }) => {
     const passed = result.score >= 70;
     const Icon = passed ? Award : XCircle;
+    
+    // Calculate total from correct + wrong, or use questions length
+    const total = (result.correct || 0) + (result.wrong || 0) || questions.length;
 
-    console.log('ResultSummary received:', { result, questions, userAnswers });
+    console.log('ResultSummary rendering with:', { result, questions, userAnswers, total });
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -45,7 +48,7 @@ const ResultSummary = ({ result, questions, userAnswers, lessonTitle, onNavigate
 
                 <div className="grid grid-cols-3 gap-4 text-center border-b pb-4">
                     <StatCard label="Score" value={`${result.score}%`} color={passed ? 'text-green-500' : 'text-red-500'} />
-                    <StatCard label="Correct" value={`${result.correct}/${result.total || questions.length}`} color="text-indigo-500" />
+                    <StatCard label="Correct" value={`${result.correct}/${total}`} color="text-indigo-500" />
                     <StatCard label="Tokens Earned" value={`+${result.tokens_awarded || 0}`} color="text-yellow-500" />
                 </div>
 
@@ -63,7 +66,7 @@ const ResultSummary = ({ result, questions, userAnswers, lessonTitle, onNavigate
                 <h4 className="text-xl font-bold dark:text-white">Question Review</h4>
                 {questions.map((q, index) => {
                     const userAnswer = userAnswers[q.id];
-                    const correctAnswer = q.correct_answer || q.correctAnswer;
+                    const correctAnswer = q.correct_answer || q.correct_option || q.correctAnswer;
                     const isCorrect = userAnswer === correctAnswer;
 
                     return (
@@ -200,6 +203,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     };
 
     const handleSubmit = async () => {
+        console.log('🔵 handleSubmit called, setting status to submitting');
         setStatus('submitting');
         setErrorMessage('');
 
@@ -211,29 +215,33 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             }))
         };
 
-        console.log('Submitting quiz with answers:', submissionBody);
+        console.log('🔵 Submitting quiz with answers:', submissionBody);
 
         try {
             const result = await api.learn.submitQuiz(lessonId, submissionBody.answers);
-            console.log('Quiz submission result:', result);
+            console.log('🟢 Quiz submission result received:', result);
 
             // Update wallet balance if tokens were awarded
-            if (result.tokens_awarded > 0) {
+            if (result.tokens_awarded > 0 && onUpdateWallet) {
+                console.log('🔵 Updating wallet with tokens:', result.tokens_awarded);
                 onUpdateWallet(result.tokens_awarded); 
             }
 
+            console.log('🔵 Setting submission result and changing status to results');
             setSubmissionResult(result);
             setStatus('results');
+            console.log('🟢 Status changed to results');
 
         } catch (err) {
             const message = err.message || 'An unknown API error occurred during submission.';
-            console.error("Quiz submission failed:", message, err);
+            console.error("🔴 Quiz submission failed:", message, err);
             setErrorMessage(message); 
             setStatus('error');
         }
     };
 
     // --- RENDER LOGIC ---
+    console.log('🔵 QuizView rendering with status:', status);
 
     if (status === 'loading') {
         return <LoadingState message="Fetching quiz questions..." />;
@@ -254,6 +262,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     }
 
     if (status === 'results' && submissionResult) {
+        console.log('🟢 Rendering ResultSummary component');
         return (
             <ResultSummary 
                 result={submissionResult} 

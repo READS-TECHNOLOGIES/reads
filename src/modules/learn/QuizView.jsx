@@ -261,7 +261,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         return <CompletedState lessonTitle={lessonTitle} onNavigate={onNavigate} />;
     }
 
-    if (status === 'results' && submissionResult) {
+    if (status === 'results' && 'submissionResult') {
         console.log('🟢 Rendering ResultSummary component');
         return (
             <ResultSummary 
@@ -278,7 +278,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         return (
             <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-xl shadow-lg border-l-4 border-red-500">
                 <XCircle size={24} className="mx-auto mb-3 text-red-500" />
-                <p className='font-bold text-red-600 dark:text-red-400'>Quiz Error</p>
+                <p className='font-bold text-red-600 dark:text-red-400'>Congratulations 🎊🎊🎉🎉 Quiz  Already Completed</p>
                 <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>{errorMessage}</p>
                 <button 
                     onClick={() => { setStatus('loading'); setErrorMessage(''); setSubmissionResult(null); }} 

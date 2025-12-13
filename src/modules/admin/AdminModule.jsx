@@ -293,8 +293,8 @@ const UserManagement = ({ currentAdminId, onToast }) => {
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Note: api.admin.getAllUsers is used here as it's defined in api.js
-            const data = await api.admin.getAllUsers(); 
+            // Note: api.admin.getUsers is used here as it's defined in api.js
+            const data = await api.admin.getUsers(); 
             // Sort by admin status first (admins on top)
             const sortedData = [...data].sort((a, b) => {
                 if (a.is_admin === b.is_admin) return 0;

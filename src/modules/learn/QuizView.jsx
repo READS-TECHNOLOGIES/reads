@@ -16,7 +16,7 @@ const CompletedState = ({ lessonTitle, onNavigate }) => (
         <CheckCircle size={48} className="text-green-600 mx-auto" />
         <h3 className="text-2xl font-bold text-center dark:text-white">Quiz Completed!</h3>
         <p className="text-center text-gray-600 dark:text-gray-400">
-            You have already successfully completed the quiz for **{lessonTitle}** and earned your reward.
+            You have already successfully completed the quiz for <strong>{lessonTitle}</strong> and earned your reward.
         </p>
         <button 
             onClick={() => onNavigate('learn', 'categories')}
@@ -27,22 +27,110 @@ const CompletedState = ({ lessonTitle, onNavigate }) => (
     </div>
 );
 
-const ResultSummary = ({ result, lessonTitle, onNavigate }) => {
+const ResultSummary = ({ result, questions, userAnswers, lessonTitle, onNavigate }) => {
     const passed = result.score >= 70;
     const Icon = passed ? Award : XCircle;
 
+    console.log('ResultSummary received:', { result, questions, userAnswers });
+
     return (
-        <div className="space-y-6 animate-fade-in p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
-            <div className="text-center">
-                <Icon size={48} className={`mx-auto mb-3 ${passed ? 'text-green-500' : 'text-red-500'}`} />
-                <h3 className="text-3xl font-bold dark:text-white">{passed ? "Congratulations!" : "Quiz Failed"}</h3>
-                <p className="text-gray-600 dark:text-gray-400">Results for: **{lessonTitle}**</p>
+        <div className="space-y-6 animate-fade-in">
+            {/* Header with score */}
+            <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
+                <div className="text-center">
+                    <Icon size={48} className={`mx-auto mb-3 ${passed ? 'text-green-500' : 'text-red-500'}`} />
+                    <h3 className="text-3xl font-bold dark:text-white">{passed ? "Congratulations!" : "Quiz Failed"}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Results for: <strong>{lessonTitle}</strong></p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 text-center border-b pb-4">
+                    <StatCard label="Score" value={`${result.score}%`} color={passed ? 'text-green-500' : 'text-red-500'} />
+                    <StatCard label="Correct" value={`${result.correct}/${result.total || questions.length}`} color="text-indigo-500" />
+                    <StatCard label="Tokens Earned" value={`+${result.tokens_awarded || 0}`} color="text-yellow-500" />
+                </div>
+
+                {!passed && (
+                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <p className="text-sm text-red-600 dark:text-red-400 text-center">
+                            You need 70% or higher to pass. Review the questions below and try again!
+                        </p>
+                    </div>
+                )}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center border-b pb-4">
-                <StatCard label="Score" value={`${result.score}%`} color={passed ? 'text-green-500' : 'text-red-500'} />
-                <StatCard label="Correct" value={result.correct} color="text-indigo-500" />
-                <StatCard label="Tokens" value={`+${result.tokens_awarded}`} color="text-yellow-500" />
+            {/* Detailed question review */}
+            <div className="space-y-4">
+                <h4 className="text-xl font-bold dark:text-white">Question Review</h4>
+                {questions.map((q, index) => {
+                    const userAnswer = userAnswers[q.id];
+                    const correctAnswer = q.correct_answer || q.correctAnswer;
+                    const isCorrect = userAnswer === correctAnswer;
+
+                    return (
+                        <div 
+                            key={q.id} 
+                            className={`p-6 rounded-xl shadow-md border-2 ${
+                                isCorrect 
+                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
+                                    : 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                            }`}
+                        >
+                            <div className="flex items-start justify-between mb-4">
+                                <p className="font-semibold text-lg dark:text-white flex-1">
+                                    {index + 1}. {q.question}
+                                </p>
+                                {isCorrect ? (
+                                    <CheckCircle size={24} className="text-green-500 flex-shrink-0 ml-2" />
+                                ) : (
+                                    <XCircle size={24} className="text-red-500 flex-shrink-0 ml-2" />
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                {q.options.map(option => {
+                                    const optionKey = option.split('. ')[0];
+                                    const isUserAnswer = userAnswer === optionKey;
+                                    const isCorrectOption = correctAnswer === optionKey;
+
+                                    let bgColor = 'bg-gray-50 dark:bg-slate-700';
+                                    let borderColor = 'border-gray-200 dark:border-slate-600';
+                                    let textColor = 'text-gray-700 dark:text-gray-200';
+
+                                    if (isCorrectOption) {
+                                        bgColor = 'bg-green-100 dark:bg-green-900/30';
+                                        borderColor = 'border-green-500';
+                                        textColor = 'text-green-800 dark:text-green-200';
+                                    } else if (isUserAnswer && !isCorrect) {
+                                        bgColor = 'bg-red-100 dark:bg-red-900/30';
+                                        borderColor = 'border-red-500';
+                                        textColor = 'text-red-800 dark:text-red-200';
+                                    }
+
+                                    return (
+                                        <div
+                                            key={option}
+                                            className={`p-3 rounded-lg border-2 ${bgColor} ${borderColor} ${textColor}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span>{option}</span>
+                                                {isCorrectOption && (
+                                                    <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded">
+                                                        Correct Answer
+                                                    </span>
+                                                )}
+                                                {isUserAnswer && !isCorrect && (
+                                                    <span className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded">
+                                                        Your Answer
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
             <button 
@@ -73,7 +161,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     const [questions, setQuestions] = useState([]);
     const [answers, setAnswers] = useState({});
     const [submissionResult, setSubmissionResult] = useState(null);
-    const [status, setStatus] = useState('loading'); // 'loading', 'submitting', 'questions', 'completed', 'results', 'error'
+    const [status, setStatus] = useState('loading');
     const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
@@ -82,6 +170,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             setErrorMessage('');
             try {
                 const data = await api.learn.getQuizQuestions(lessonId);
+                console.log('Quiz questions fetched:', data);
                 setQuestions(data);
                 setStatus('questions');
             } catch (err) {
@@ -111,7 +200,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     };
 
     const handleSubmit = async () => {
-        setStatus('submitting'); // 🟢 NEW: Set to 'submitting' state
+        setStatus('submitting');
         setErrorMessage('');
 
         const submissionBody = {
@@ -122,8 +211,11 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             }))
         };
 
+        console.log('Submitting quiz with answers:', submissionBody);
+
         try {
             const result = await api.learn.submitQuiz(lessonId, submissionBody.answers);
+            console.log('Quiz submission result:', result);
 
             // Update wallet balance if tokens were awarded
             if (result.tokens_awarded > 0) {
@@ -135,7 +227,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
         } catch (err) {
             const message = err.message || 'An unknown API error occurred during submission.';
-            console.error("Quiz submission failed:", message);
+            console.error("Quiz submission failed:", message, err);
             setErrorMessage(message); 
             setStatus('error');
         }
@@ -147,7 +239,6 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         return <LoadingState message="Fetching quiz questions..." />;
     }
 
-    // 🟢 NEW: Separate loading state for submission
     if (status === 'submitting') {
         return (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -163,17 +254,25 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     }
 
     if (status === 'results' && submissionResult) {
-        return <ResultSummary result={submissionResult} lessonTitle={lessonTitle} onNavigate={onNavigate} />;
+        return (
+            <ResultSummary 
+                result={submissionResult} 
+                questions={questions}
+                userAnswers={answers}
+                lessonTitle={lessonTitle} 
+                onNavigate={onNavigate} 
+            />
+        );
     }
 
     if (status === 'error') {
         return (
             <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-xl shadow-lg border-l-4 border-red-500">
                 <XCircle size={24} className="mx-auto mb-3 text-red-500" />
-                <p className='font-bold text-red-600 dark:text-red-400'>Quiz Load Error</p>
+                <p className='font-bold text-red-600 dark:text-red-400'>Quiz Error</p>
                 <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>{errorMessage}</p>
                 <button 
-                    onClick={() => { setStatus('loading'); setErrorMessage(''); }} 
+                    onClick={() => { setStatus('loading'); setErrorMessage(''); setSubmissionResult(null); }} 
                     className="mt-4 text-indigo-600 hover:underline"
                 >
                     <RefreshCw size={16} className="inline mr-1" /> Retry

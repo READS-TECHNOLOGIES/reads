@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-// We still need MUI components, but we will style them using Tailwind classes
 import { Box, Typography, Button, Divider, List, ListItem, ListItemText, CircularProgress, Alert, Tooltip, IconButton } from '@mui/material';
 import { fetchProtectedData, api } from '../../services/api';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -10,11 +9,9 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 const WalletModule = ({ user, balance, onUpdateBalance }) => {
-    // START FIX: Set initial state to a descriptive placeholder if no address is present.
-    const initialAddress = user?.cardano_address || null; // Use null instead of '' for better falsy check
-    // END FIX
+    const initialAddress = user?.cardano_address || null;
 
-    const [currentBalance, setCurrentBalance] = useState(balance);
+    const [currentBalance, setCurrentBalance] = useState(balance || 0);
     const [history, setHistory] = useState([]);
     const [summary, setSummary] = useState({});
     const [walletAddress, setWalletAddress] = useState(initialAddress);
@@ -23,13 +20,11 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     const [copied, setCopied] = useState(false);
     const [showFullAddress, setShowFullAddress] = useState(false);
 
-    const getToken = () => localStorage.getItem('access_token');
-
     const fetchData = useCallback(async () => {
-        const token = getToken();
+        const token = localStorage.getItem('access_token');
         if (!token) {
             setLoading(false);
-            setError("Authentication token not found.");
+            setError("Authentication token not found. Please login.");
             return;
         }
 
@@ -37,60 +32,68 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
         setError(null);
 
         try {
-            // These calls use the token internally via api.js
-            const [balanceData, historyData, summaryData, profileData] = await Promise.all([
+            // Fetch wallet data
+            const [balanceData, historyData, profileData] = await Promise.all([
                 api.wallet.getBalance(),
                 api.wallet.getHistory(),
-                fetchProtectedData('/rewards/summary', token),
                 api.auth.me()
             ]);
 
-            setCurrentBalance(balanceData.token_balance); // Ensure you are pulling the value out
-            onUpdateBalance(balanceData.token_balance);
-            setHistory(historyData);
-            setSummary(summaryData);
+            // Set balance
+            const newBalance = typeof balanceData === 'number' ? balanceData : (balanceData?.token_balance || 0);
+            setCurrentBalance(newBalance);
+            if (onUpdateBalance) {
+                onUpdateBalance(newBalance);
+            }
 
-            // START FIX: More explicit check for the address data
-            if (profileData && profileData.cardano_address) {
+            // Set history
+            setHistory(historyData || []);
+
+            // Calculate summary from history
+            const totalEarned = (historyData || []).reduce((sum, item) => sum + (item.tokens_earned || 0), 0);
+            const quizzesPassed = (historyData || []).filter(item => item.type === 'quiz').length;
+            setSummary({
+                total_tokens_earned: totalEarned,
+                total_quizzes_passed: quizzesPassed
+            });
+
+            // Set Cardano address
+            if (profileData?.cardano_address) {
                 setWalletAddress(profileData.cardano_address);
             } else {
-                // If profileData is null (due to a non-401 error in api.js) or address is missing:
-                console.error("Wallet data fetch successful (200 OK) but 'cardano_address' is missing from profile data:", profileData);
-                // We keep the old address or 'null' which will be rendered as 'No address available'
+                console.warn("Profile loaded but cardano_address is missing:", profileData);
                 if (!walletAddress) {
-                    setError("Address not found. Please re-login or check account generation.");
+                    setError("Cardano address not found. Please contact support.");
                 }
             }
-            // END FIX
 
         } catch (err) {
             console.error("Wallet data fetching failed:", err);
             if (err.message === 'AuthenticationRequired') {
-                 setError("Session expired. Please re-login.");
+                setError("Session expired. Please re-login.");
             } else {
-                 setError(err.message || "Failed to load wallet data.");
+                setError(err.message || "Failed to load wallet data.");
             }
         } finally {
             setLoading(false);
         }
-    }, [onUpdateBalance, walletAddress]); // Dependency array updated
+    }, [onUpdateBalance, walletAddress]);
 
     useEffect(() => {
         if (user) {
             fetchData();
         } else {
             setLoading(false);
+            setError("User not logged in.");
         }
-    }, [fetchData, user]);
+    }, [user, fetchData]);
 
     const handleCopy = () => {
-        // START FIX: Ensure address is not null/empty string before copying
         if (walletAddress) {
             navigator.clipboard.writeText(walletAddress);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
-        // END FIX
     };
 
     const toggleAddressVisibility = () => {
@@ -98,19 +101,31 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
     };
 
     const formatAddress = (address) => {
-        // START FIX: Handle 'null' explicitly
-        if (!address) return 'No address available'; // Changed 'N/A' to match dashboard text
-        // END FIX
+        if (!address) return 'No address available';
         if (showFullAddress) return address;
         return `${address.slice(0, 10)}...${address.slice(-6)}`;
     };
 
     if (loading) {
-        return <CircularProgress className="block mx-auto my-5 dark:text-indigo-400" />;
+        return (
+            <div className="flex justify-center items-center p-8">
+                <CircularProgress className="text-indigo-500" />
+            </div>
+        );
     }
 
     if (error) {
-        return <Alert severity="error">{error}</Alert>;
+        return (
+            <Alert severity="error" className="m-4">
+                {error}
+                <button 
+                    onClick={fetchData} 
+                    className="ml-4 text-sm underline hover:no-underline"
+                >
+                    Retry
+                </button>
+            </Alert>
+        );
     }
 
     return (
@@ -121,9 +136,8 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                 Your $READS Wallet
             </Typography>
 
-            {/* CARDANO WALLET ADDRESS SECTION (Tailwind conversion) */}
+            {/* CARDANO WALLET ADDRESS SECTION */}
             <div className="p-4 mb-5 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg bg-indigo-50 dark:bg-slate-700 shadow-inner">
-
                 <div className="flex items-center justify-between mb-3">
                     <Typography variant="subtitle1" className="font-bold text-indigo-700 dark:text-indigo-400">
                         🔗 Cardano Wallet Address
@@ -143,10 +157,8 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                 <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                     <Typography
                         variant="body2"
-                        className={`font-mono flex-grow mr-4 truncate ${showFullAddress ? 'text-xs md:text-sm' : 'text-sm'} text-gray-700 dark:text-gray-300`}
-                        // Note: Using Box/div here instead of Typography with break-all for better Tailwind control
+                        className={`font-mono flex-grow mr-4 ${showFullAddress ? 'break-all text-xs md:text-sm' : 'truncate text-sm'} text-gray-700 dark:text-gray-300`}
                     >
-                        {/* FIX: Simplified rendering logic since formatAddress now handles the fallback */}
                         {formatAddress(walletAddress)}
                     </Typography>
                     <Button
@@ -195,12 +207,12 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                 </Typography>
             </div>
 
-            {/* List */}
+            {/* Transaction History List */}
             <List className="max-h-80 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded-lg mt-2 divide-y divide-gray-100 dark:divide-slate-700">
                 {history.length === 0 ? (
                     <ListItem className="py-3 bg-white dark:bg-slate-800">
                         <ListItemText
-                            primary="No reward history yet."
+                            primary="No transaction history yet. Complete quizzes to earn $READS tokens!"
                             className="text-gray-500 dark:text-gray-400 text-center"
                         />
                     </ListItem>
@@ -216,8 +228,8 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                             className="py-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                         >
                             <ListItemText
-                                primary={item.lesson_title}
-                                secondary={`Source: ${item.type} | Date: ${new Date(item.created_at).toLocaleDateString()}`}
+                                primary={item.lesson_title || 'Reward'}
+                                secondary={`Source: ${item.type || 'Unknown'} | Date: ${new Date(item.created_at).toLocaleDateString()}`}
                                 primaryTypographyProps={{ className: 'text-gray-800 dark:text-gray-200 font-medium' }}
                                 secondaryTypographyProps={{ className: 'text-gray-500 dark:text-gray-400 text-sm' }}
                             />

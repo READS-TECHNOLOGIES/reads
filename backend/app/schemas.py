@@ -27,6 +27,7 @@ class ResetPassword(BaseModel):
 
 class PasswordResetResponse(BaseModel):
     message: str
+
 # --- User & Wallet Schemas ---
 class UserProfile(BaseModel):
     id: UUID
@@ -41,18 +42,22 @@ class UserProfile(BaseModel):
         from_attributes = True
 
 class TokenBalance(BaseModel):
-# ... (rest of the file remains the same)
-
     token_balance: int
 
 class UserStats(BaseModel):
     lessons_completed: int
     quizzes_taken: int
 
+# 🏆 NEW: Leaderboard Schema
 class LeaderboardEntry(BaseModel):
+    rank: int
+    user_id: str
     name: str
-    token_balance: int
-
+    total_tokens: int
+    quizzes_passed: int
+    lessons_completed: int
+    is_current_user: bool
+    
     class Config:
         from_attributes = True
 

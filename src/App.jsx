@@ -16,9 +16,9 @@ import AdminModule from './modules/admin/AdminModule.jsx'; // <--- IMPORT ADDED
 const ThemeToggle = ({ onClick, isDark }) => (
     <button 
         onClick={onClick} 
-        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+        className="p-2 rounded-full hover:bg-primary-gray dark:hover:bg-dark-card-light transition-colors"
     >
-        {isDark ? <Sun className="text-yellow-400" size={20} /> : <Moon className="text-indigo-600" size={20} />}
+        {isDark ? <Sun className="text-orange" size={20} /> : <Moon className="text-cyan" size={20} />}
     </button>
 );
 
@@ -103,12 +103,12 @@ export default function App() {
   // --- Render Auth or App Shell ---
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen text-lg dark:bg-slate-900 dark:text-white">Loading $READS...</div>;
+    return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light">Loading $READS...</div>;
   }
   
   if (!user || view === 'login') {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-slate-900 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-light-general dark:bg-dark-general p-4">
             <AuthModule 
                 view={authView} 
                 onLoginSuccess={handleLoginSuccess} 
@@ -135,20 +135,20 @@ export default function App() {
 
 
   return (
-    <div className={`flex min-h-screen bg-gray-50 dark:bg-slate-900 ${darkMode ? 'dark' : ''}`}>
+    <div className={`flex min-h-screen bg-light-general dark:bg-dark-general ${darkMode ? 'dark' : ''}`}>
       
       {/* --- Sidebar (Desktop & Mobile) --- */}
       <aside 
         className={`fixed inset-y-0 left-0 z-40 md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-                   w-64 bg-white dark:bg-slate-800 shadow-xl md:shadow-none p-4 flex flex-col transition-transform duration-300 border-r border-gray-200 dark:border-slate-700`}
+                   w-64 bg-primary-navy dark:bg-dark-card shadow-xl md:shadow-none p-4 flex flex-col transition-transform duration-300 border-r border-cyan/20`}
       >
         <div className="flex justify-between items-center mb-8">
             <div className='flex items-center gap-3'>
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-lg font-extrabold">$R</div>
-                <span className="font-bold text-lg dark:text-white">$READS</span>
+                <div className="w-8 h-8 rounded-lg bg-cyan text-primary-navy flex items-center justify-center text-lg font-extrabold">$R</div>
+                <span className="font-bold text-lg text-card-light">$READS</span>
             </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1">
-            <X size={24} className='dark:text-white' />
+            <X size={24} className='text-card-light' />
           </button>
         </div>
 
@@ -160,8 +160,8 @@ export default function App() {
               onClick={() => handleNavigate(item.view, item.subView)}
               className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-colors font-medium 
                          ${view === item.view 
-                            ? 'bg-indigo-500 text-white shadow-md' 
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'}`
+                            ? 'bg-cyan text-primary-navy shadow-md shadow-cyan/50' 
+                            : 'text-card-muted hover:bg-dark-card-light hover:text-card-light'}`
                         }
             >
               <item.icon size={18} />
@@ -171,12 +171,12 @@ export default function App() {
         </nav>
 
         {/* Footer/Logout */}
-        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-slate-700 space-y-3">
+        <div className="mt-8 pt-4 border-t border-cyan/20 space-y-3">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 dark:text-white">
+                <div className="flex items-center gap-3 text-card-light">
                     <img 
                         src={user.avatar} 
-                        className="w-8 h-8 rounded-full object-cover" 
+                        className="w-8 h-8 rounded-full object-cover border-2 border-cyan" 
                         alt="Profile" 
                     />
                     <span className='text-sm font-semibold truncate max-w-[100px]'>{user.name}</span>
@@ -186,7 +186,7 @@ export default function App() {
 
             <button
                 onClick={handleLogout}
-                className="w-full py-2 rounded-xl text-sm bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2 font-medium"
+                className="w-full py-2 rounded-xl text-sm bg-orange/20 text-orange hover:bg-orange/30 transition-colors flex items-center justify-center gap-2 font-medium border border-orange/30"
             >
                 <LogOut size={16} /> Log Out
             </button>
@@ -197,9 +197,9 @@ export default function App() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Mobile Header (Shows on mobile) */}
-        <header className="p-4 flex justify-between items-center bg-white dark:bg-slate-800 md:hidden border-b border-gray-200 dark:border-slate-700 shadow-sm">
-          <button onClick={() => setSidebarOpen(true)} className='dark:text-white'><Menu /></button>
-          <span className="font-bold dark:text-white">$READS</span>
+        <header className="p-4 flex justify-between items-center bg-primary-navy dark:bg-dark-card md:hidden border-b border-cyan/20 shadow-sm">
+          <button onClick={() => setSidebarOpen(true)} className='text-card-light'><Menu /></button>
+          <span className="font-bold text-card-light">$READS</span>
           <span className='w-6 h-6'></span> {/* Placeholder for alignment */}
         </header>
 

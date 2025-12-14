@@ -161,7 +161,7 @@ export default function App() {
               className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-colors font-medium 
                          ${view === item.view 
                             ? 'bg-cyan text-primary-navy shadow-md shadow-cyan/50' 
-                            : 'text-card-muted hover:bg-dark-card-light hover:text-card-light'}`
+                            : 'text-yellow-400 hover:bg-dark-card-light hover:text-yellow-300'}`
                         }
             >
               <item.icon size={18} />

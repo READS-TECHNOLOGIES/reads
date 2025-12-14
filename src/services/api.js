@@ -149,6 +149,20 @@ export const api = {
             const data = await res.json();
             return data;
         },
+        getLeaderboard: async (limit = 10) => {
+            const res = await fetch(`${API_URL}/leaderboard?limit=${limit}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Leaderboard');
+                } catch (e) {
+                    console.error("Non-fatal error fetching leaderboard:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data;
+        },
     },
 
     // --- LEARN ---

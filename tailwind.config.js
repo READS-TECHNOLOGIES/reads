@@ -17,8 +17,8 @@ export default {
         },
         dark: {
           black: '#0A0A0A',    // Dark theme general background (true black)
-          green: '#22C55E',    // Mid-green for cards (not too light, not too dark)
-          'green-dark': '#16A34A', // Slightly darker green for hover
+          navy: '#1E3A5F',     // Dark navy blue for cards (makes gold pop!)
+          'navy-dark': '#152B47', // Darker navy for hover
           gold: '#F59E0B',     // Gold for fonts
         }
       },
@@ -29,7 +29,7 @@ export default {
         
         // Dark theme backgrounds
         'dark-general': '#0A0A0A',   // Black background
-        'dark-card': '#22C55E',      // Mid-green cards
+        'dark-card': '#1E3A5F',      // Dark navy blue cards
       },
       textColor: {
         'card-gold': '#F59E0B',      // Gold text on cards

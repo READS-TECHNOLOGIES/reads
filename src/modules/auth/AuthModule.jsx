@@ -25,7 +25,7 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
         onNavigate('login');
       } else if (view === 'forgot-password') {
         await api.auth.forgotPassword(formData.email);
-        setError('✅ Password reset link sent to your email!');
+        setError('✅ Password reset link sent to your email!. If you did not see an email, check your spam or junk folder');
         setTimeout(() => onNavigate('login'), 3000);
       }
     } catch (err) {

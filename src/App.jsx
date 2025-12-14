@@ -144,7 +144,7 @@ export default function App() {
       >
         <div className="flex justify-between items-center mb-8">
             <div className='flex items-center gap-3'>
-                <div className="w-8 h-8 rounded-lg bg-cyan text-primary-navy flex items-center justify-center text-lg font-extrabold">$R</div>
+                <img src="/assets/reads-logo.png" alt="$READS Logo" className="w-8 h-8 rounded-lg" />
                 <span className="font-bold text-lg text-card-light">$READS</span>
             </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1">
@@ -201,6 +201,13 @@ export default function App() {
           <button onClick={() => setSidebarOpen(true)} className='text-card-light'><Menu /></button>
           <span className="font-bold text-card-light">$READS</span>
           <span className='w-6 h-6'></span> {/* Placeholder for alignment */}
+        </header>
+
+        {/* Desktop Header - Shows active tab name */}
+        <header className="hidden md:flex p-6 items-center bg-primary-navy dark:bg-dark-card border-b border-cyan/20 shadow-sm">
+          <h1 className="text-2xl font-bold text-yellow-400 capitalize">
+            {navItems.find(item => item.view === view)?.name || 'Dashboard'}
+          </h1>
         </header>
 
         {/* Content Area */}

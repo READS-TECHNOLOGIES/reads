@@ -104,7 +104,7 @@ export default function App() {
   // --- Render Auth or App Shell ---
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light">Loading $READS...</div>;
+    return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light"> 🕑Loading $READS...</div>;
   }
   
   if (!user || view === 'login') {
@@ -164,7 +164,7 @@ export default function App() {
               onClick={() => handleNavigate(item.view, item.subView)}
               className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-colors font-medium 
                          ${view === item.view 
-                            ? 'bg-cyan text-primary-navy shadow-md shadow-cyan/50' 
+                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' 
                             : 'text-yellow-400 hover:bg-dark-card-light hover:text-yellow-300'}`
                         }
             >

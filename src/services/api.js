@@ -79,7 +79,7 @@ export const api = {
             return data;
         },
         forgotPassword: async (email) => {
-            const res = await fetch(`${API_URL}/auth/forgot-password`, {
+            const res = await fetch(`${API_URL}/auth/request-password-reset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })

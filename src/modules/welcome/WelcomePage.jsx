@@ -1,8 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, TrendingUp, Award, ArrowRight, CheckCircle } from 'lucide-react';
 import readsLogo from '../../../assets/reads-logo.png';
 
 const WelcomePage = ({ onGetStarted }) => {
+  const [currentImageSet, setCurrentImageSet] = useState(0);
+
+  const imageSets = [
+    [
+      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1529390079861-591de354faf5?w=400&h=400&fit=crop"
+    ],
+    [
+      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&h=400&fit=crop"
+    ],
+    [
+      "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1516534775068-ba3e7458af70?w=400&h=400&fit=crop"
+    ]
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageSet((prev) => (prev + 1) % imageSets.length);
+    }, 4000); // Change images every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-navy via-dark-card to-primary-navy-dark overflow-hidden">
       {/* Hero Section */}
@@ -49,6 +79,7 @@ const WelcomePage = ({ onGetStarted }) => {
                 </button>
                 <button
                   className="px-8 py-4 rounded-xl bg-transparent text-card-light font-bold hover:bg-white/10 transition-colors border-2 border-card-light/30"
+                  onClick={() => window.open('https://readstechnet.vercel.app', '_blank')}
                 >
                   Learn More
                 </button>
@@ -71,42 +102,54 @@ const WelcomePage = ({ onGetStarted }) => {
               </div>
             </div>
 
-            {/* Right Content - Student Images */}
-            <div className="relative">
+            {/* Right Content - Student Images with Sliding Animation */}
+            <div className="relative overflow-hidden">
               <div className="grid grid-cols-2 gap-4">
-                {/* Student Image 1 */}
-                <div className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl transform hover:scale-105 transition-transform">
+                {/* Student Image 1 - Slide from left */}
+                <div 
+                  key={`img1-${currentImageSet}`}
+                  className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl animate-slide-in-left"
+                >
                   <img 
-                    src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=400&h=400&fit=crop" 
+                    src={imageSets[currentImageSet][0]} 
                     alt="Students studying together" 
-                    className="w-full h-64 object-cover"
+                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
                   />
                 </div>
                 
-                {/* Student Image 2 */}
-                <div className="rounded-2xl overflow-hidden border-4 border-yellow-400/30 shadow-2xl transform hover:scale-105 transition-transform mt-8">
+                {/* Student Image 2 - Slide from right */}
+                <div 
+                  key={`img2-${currentImageSet}`}
+                  className="rounded-2xl overflow-hidden border-4 border-yellow-400/30 shadow-2xl mt-8 animate-slide-in-right"
+                >
                   <img 
-                    src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&h=400&fit=crop" 
+                    src={imageSets[currentImageSet][1]} 
                     alt="Student celebrating success" 
-                    className="w-full h-64 object-cover"
+                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
                   />
                 </div>
                 
-                {/* Student Image 3 */}
-                <div className="rounded-2xl overflow-hidden border-4 border-orange/30 shadow-2xl transform hover:scale-105 transition-transform -mt-4">
+                {/* Student Image 3 - Fade in */}
+                <div 
+                  key={`img3-${currentImageSet}`}
+                  className="rounded-2xl overflow-hidden border-4 border-orange/30 shadow-2xl -mt-4 animate-fade-in"
+                >
                   <img 
-                    src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop" 
+                    src={imageSets[currentImageSet][2]} 
                     alt="Group study session" 
-                    className="w-full h-64 object-cover"
+                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
                   />
                 </div>
                 
-                {/* Student Image 4 */}
-                <div className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl transform hover:scale-105 transition-transform">
+                {/* Student Image 4 - Slide from bottom */}
+                <div 
+                  key={`img4-${currentImageSet}`}
+                  className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl animate-slide-in-bottom"
+                >
                   <img 
-                    src="https://images.unsplash.com/photo-1529390079861-591de354faf5?w=400&h=400&fit=crop" 
+                    src={imageSets[currentImageSet][3]} 
                     alt="Student using laptop" 
-                    className="w-full h-64 object-cover"
+                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
                   />
                 </div>
               </div>

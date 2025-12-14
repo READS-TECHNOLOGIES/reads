@@ -25,7 +25,7 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
         onNavigate('login');
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || 'Authentication failed. Check your credentials');
     } finally {
       setLoading(false);
     }

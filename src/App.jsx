@@ -84,7 +84,10 @@ export default function App() {
         const token = localStorage.getItem('access_token');
         if (token) {
             await handleLoginSuccess(); // Attempts to fetch user data and balance
-        } 
+        } else {
+            // No token, show welcome page
+            setView('welcome');
+        }
         setIsLoading(false);
     };
 

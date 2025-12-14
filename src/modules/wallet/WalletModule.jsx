@@ -109,8 +109,8 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                 <div className="flex items-start">
                     <AlertCircle size={20} className="text-primary-gold dark:text-dark-gold mr-3 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 dark:text-gray-200">Error Loading Wallet</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{error}</p>
+                        <h3 className="font-semibold text-gray-800 dark:text-card-gold">Error Loading Wallet</h3>
+                        <p className="text-sm text-gray-600 dark:text-card-gold/80 mt-1">{error}</p>
                         <button 
                             onClick={fetchData}
                             className="mt-3 text-sm text-primary-gold dark:text-dark-gold hover:text-primary-gold-light font-medium flex items-center"
@@ -141,14 +141,14 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                     <button
                         onClick={toggleAddressVisibility}
                         disabled={!walletAddress}
-                        className="p-2 rounded-full hover:bg-purple-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 rounded-full hover:bg-purple-700 dark:hover:bg-dark-navy-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title={showFullAddress ? "Hide full address" : "Show full address"}
                     >
                         {showFullAddress ? <EyeOff size={20} className="text-card-gold" /> : <Eye size={20} className="text-card-gold" />}
                     </button>
                 </div>
 
-                <div className="flex items-center justify-between bg-white/10 dark:bg-black/20 p-4 rounded-lg border border-gold-light">
+                <div className="flex items-center justify-between bg-white/10 dark:bg-black/30 p-4 rounded-lg border border-gold-light">
                     <p className={`font-mono flex-grow mr-4 ${showFullAddress ? 'break-all text-xs md:text-sm' : 'truncate text-sm'} text-card-gold`}>
                         {formatAddress(walletAddress)}
                     </p>
@@ -199,13 +199,13 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
 
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-4 bg-white/10 dark:bg-black/20 rounded-lg border border-gold-light">
+                    <div className="p-4 bg-white/10 dark:bg-black/30 rounded-lg border border-gold-light">
                         <p className="text-sm text-card-gold/80">Total Earned</p>
                         <p className="text-2xl font-bold text-card-gold">
                             {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0} $READS
                         </p>
                     </div>
-                    <div className="p-4 bg-white/10 dark:bg-black/20 rounded-lg border border-gold-light">
+                    <div className="p-4 bg-white/10 dark:bg-black/30 rounded-lg border border-gold-light">
                         <p className="text-sm text-card-gold/80">Quizzes Passed</p>
                         <p className="text-2xl font-bold text-card-gold">
                             {summary.total_quizzes_passed || 0}
@@ -214,7 +214,7 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                 </div>
 
                 {/* Transaction History List */}
-                <div className="border-2 border-gold-light rounded-lg overflow-hidden max-h-96 overflow-y-auto bg-white/5 dark:bg-black/10">
+                <div className="border-2 border-gold-light rounded-lg overflow-hidden max-h-96 overflow-y-auto bg-white/5 dark:bg-black/20">
                     {history.length === 0 ? (
                         <div className="p-8 text-center text-card-gold/70">
                             <History size={48} className="mx-auto mb-3 opacity-30" />
@@ -226,7 +226,7 @@ const WalletModule = ({ user, balance, onUpdateBalance }) => {
                             {history.map((item) => (
                                 <div
                                     key={item.id}
-                                    className="p-4 hover:bg-white/10 dark:hover:bg-black/20 transition-colors flex justify-between items-center"
+                                    className="p-4 hover:bg-white/10 dark:hover:bg-black/30 transition-colors flex justify-between items-center"
                                 >
                                     <div className="flex-1">
                                         <p className="font-semibold text-card-gold">

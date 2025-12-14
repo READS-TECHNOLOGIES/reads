@@ -5,6 +5,7 @@ import readsLogo from '../assets/reads-logo.png';
 // --- SERVICE & MODULE IMPORTS ---
 import { api } from './services/api';
 import AuthModule from './modules/auth/AuthModule.jsx';
+import ResetPasswordPage from './modules/auth/ResetPasswordPage.jsx';
 import Dashboard from './modules/dashboard/Dashboard.jsx';
 import LearnModule from './modules/learn/LearnModule.jsx';
 import WalletModule from './modules/wallet/WalletModule.jsx';
@@ -25,6 +26,11 @@ const ThemeToggle = ({ onClick, isDark }) => (
 
 // --- Main Application Component ---
 export default function App() {
+  // Check if this is the password reset page
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPasswordPage />;
+  }
+
   const [user, setUser] = useState(null); // Full user profile from /user/profile
   const [tokenBalance, setTokenBalance] = useState(0); // Current wallet balance
   const [view, setView] = useState('login'); // 'login', 'dashboard', 'learn', etc.
@@ -104,7 +110,7 @@ export default function App() {
   // --- Render Auth or App Shell ---
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light"> 🕑Loading $READS...</div>;
+    return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light">Loading $READS...</div>;
   }
   
   if (!user || view === 'login') {

@@ -23,6 +23,11 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
         await api.auth.signup(formData.name, formData.email, formData.password);
         setError('Account created! Please log in.');
         onNavigate('login');
+      } else if (view === 'forgot-password') {
+        // TODO: Implement forgot password API call
+        // await api.auth.forgotPassword(formData.email);
+        setError('Password reset link sent to your email!');
+        setTimeout(() => onNavigate('login'), 2000);
       }
     } catch (err) {
       setError(err.message || 'Authentication failed');
@@ -45,10 +50,14 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
           className="w-20 h-20 mx-auto mb-4 rounded-xl object-contain"
         />
         <h1 className="text-3xl font-bold text-card-light mb-2">
-          {view === 'login' ? 'Welcome Back' : 'Create Account'}
+          {view === 'login' ? 'Welcome Back' : view === 'signup' ? 'Create Account' : 'Reset Password'}
         </h1>
         <p className="text-card-muted">
-          {view === 'login' ? 'Sign in to continue learning' : 'Join $READS and start earning'}
+          {view === 'login' 
+            ? 'Sign in to continue learning' 
+            : view === 'signup' 
+            ? 'Join $READS and start earning'
+            : 'Enter your email to reset your password'}
         </p>
       </div>
 
@@ -89,25 +98,39 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
           />
         </div>
 
-        <div>
-          <label className="block text-card-light font-medium mb-2">Password</label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-dark-card-light border border-cyan/20 text-card-light placeholder-card-muted focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/50"
-            placeholder="••••••••"
-            required
-          />
-        </div>
+        {view !== 'forgot-password' && (
+          <div>
+            <label className="block text-card-light font-medium mb-2">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-xl bg-dark-card-light border border-cyan/20 text-card-light placeholder-card-muted focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/50"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+        )}
+
+        {view === 'login' && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => onNavigate('forgot-password')}
+              className="text-cyan hover:text-cyan-dark transition-colors text-sm font-medium"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
 
         <button
           type="submit"
           disabled={loading}
           className="w-full py-3 rounded-xl bg-yellow-500/20 text-yellow-400 font-bold hover:bg-yellow-500/30 transition-colors border border-yellow-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Please wait...' : view === 'login' ? 'Sign In' : 'Create Account'}
+          {loading ? 'Please wait...' : view === 'login' ? 'Sign In' : view === 'signup' ? 'Create Account' : 'Send Reset Link'}
         </button>
       </form>
 
@@ -117,7 +140,11 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
           onClick={() => onNavigate(view === 'login' ? 'signup' : 'login')}
           className="text-cyan hover:text-cyan-dark transition-colors font-medium"
         >
-          {view === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+          {view === 'login' 
+            ? "Don't have an account? Sign up" 
+            : view === 'signup'
+            ? 'Already have an account? Sign in'
+            : 'Back to Sign in'}
         </button>
       </div>
     </div>

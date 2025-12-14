@@ -30,9 +30,9 @@ const WelcomePage = ({ onGetStarted }) => {
                 <span className="text-cyan text-sm font-semibold">🎓 Learn • Earn • Grow</span>
               </div>
               
-              <h1 className="text-5xl md:text-6xl font-bold text-card-light leading-tight">
+              <h1 className="text-5xl md:text-6xl font-bold text-yellow-400 leading-tight">
                 Master Your Exams,
-                <span className="text-yellow-400"> Earn Rewards</span>
+                <span className="text-card-light"> Earn Rewards</span>
               </h1>
               
               <p className="text-xl text-card-muted leading-relaxed">
@@ -132,7 +132,7 @@ const WelcomePage = ({ onGetStarted }) => {
       <div className="bg-dark-card py-20 border-t border-cyan/20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-card-light mb-4">Why Choose $READS?</h2>
+            <h2 className="text-4xl font-bold text-yellow-400 mb-4">Why Choose $READS?</h2>
             <p className="text-card-muted text-lg">Everything you need to ace your exams and earn rewards</p>
           </div>
 
@@ -142,7 +142,7 @@ const WelcomePage = ({ onGetStarted }) => {
               <div className="w-16 h-16 bg-cyan/20 rounded-xl flex items-center justify-center mb-6">
                 <BookOpen className="text-cyan" size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-card-light mb-4">Quality Content</h3>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Quality Content</h3>
               <p className="text-card-muted leading-relaxed">
                 Access comprehensive study materials for JAMB, WAEC, IELTS, and SAT prepared by expert educators.
               </p>
@@ -153,7 +153,7 @@ const WelcomePage = ({ onGetStarted }) => {
               <div className="w-16 h-16 bg-yellow-400/20 rounded-xl flex items-center justify-center mb-6">
                 <TrendingUp className="text-yellow-400" size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-card-light mb-4">Earn Tokens</h3>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Earn Tokens</h3>
               <p className="text-card-muted leading-relaxed">
                 Complete lessons and pass quizzes to earn $READS tokens. Your knowledge has real value!
               </p>
@@ -164,7 +164,7 @@ const WelcomePage = ({ onGetStarted }) => {
               <div className="w-16 h-16 bg-orange/20 rounded-xl flex items-center justify-center mb-6">
                 <Award className="text-orange" size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-card-light mb-4">Track Progress</h3>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Track Progress</h3>
               <p className="text-card-muted leading-relaxed">
                 Monitor your learning journey with detailed analytics and performance tracking.
               </p>
@@ -176,7 +176,7 @@ const WelcomePage = ({ onGetStarted }) => {
       {/* How It Works Section */}
       <div className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-card-light mb-4">How It Works</h2>
+          <h2 className="text-4xl font-bold text-yellow-400 mb-4">How It Works</h2>
           <p className="text-card-muted text-lg">Start earning in 3 simple steps</p>
         </div>
 
@@ -185,7 +185,7 @@ const WelcomePage = ({ onGetStarted }) => {
             <div className="w-20 h-20 bg-cyan rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
               1
             </div>
-            <h3 className="text-xl font-bold text-card-light mb-3">Sign Up Free</h3>
+            <h3 className="text-xl font-bold text-yellow-400 mb-3">Sign Up Free</h3>
             <p className="text-card-muted">Create your account and get 50 welcome tokens instantly</p>
           </div>
 
@@ -193,7 +193,7 @@ const WelcomePage = ({ onGetStarted }) => {
             <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
               2
             </div>
-            <h3 className="text-xl font-bold text-card-light mb-3">Study & Practice</h3>
+            <h3 className="text-xl font-bold text-yellow-400 mb-3">Study & Practice</h3>
             <p className="text-card-muted">Access lessons and take practice quizzes on your schedule</p>
           </div>
 
@@ -201,7 +201,7 @@ const WelcomePage = ({ onGetStarted }) => {
             <div className="w-20 h-20 bg-orange rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
               3
             </div>
-            <h3 className="text-xl font-bold text-card-light mb-3">Earn Rewards</h3>
+            <h3 className="text-xl font-bold text-yellow-400 mb-3">Earn Rewards</h3>
             <p className="text-card-muted">Pass quizzes and earn 100 tokens for each success</p>
           </div>
         </div>
@@ -210,10 +210,10 @@ const WelcomePage = ({ onGetStarted }) => {
       {/* CTA Section */}
       <div className="bg-gradient-to-r from-cyan via-cyan-dark to-cyan py-20">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-primary-navy mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-yellow-400 mb-6">
             Ready to Start Learning?
           </h2>
-          <p className="text-primary-navy-dark text-xl mb-8">
+          <p className="text-card-light text-xl mb-8">
             Join thousands of students earning while they study
           </p>
           <button

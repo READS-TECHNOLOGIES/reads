@@ -4,6 +4,7 @@ import readsLogo from '../assets/reads-logo.png';
 
 // --- SERVICE & MODULE IMPORTS ---
 import { api } from './services/api';
+import WelcomePage from './modules/welcome/WelcomePage.jsx';
 import AuthModule from './modules/auth/AuthModule.jsx';
 import ResetPasswordPage from './modules/auth/ResetPasswordPage.jsx';
 import Dashboard from './modules/dashboard/Dashboard.jsx';
@@ -33,7 +34,7 @@ export default function App() {
 
   const [user, setUser] = useState(null); // Full user profile from /user/profile
   const [tokenBalance, setTokenBalance] = useState(0); // Current wallet balance
-  const [view, setView] = useState('login'); // 'login', 'dashboard', 'learn', etc.
+  const [view, setView] = useState('welcome'); // 'welcome', 'login', 'dashboard', 'learn', etc.
   const [authView, setAuthView] = useState('login'); // 'login', 'signup', 'forgot-password'
   const [subView, setSubView] = useState(''); // Used by LearnModule
   const [navPayload, setNavPayload] = useState(null); // Data passed to sub-modules

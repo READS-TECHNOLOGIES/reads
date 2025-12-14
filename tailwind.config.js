@@ -8,38 +8,49 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Custom color palette
+        // Custom color palette from the mockup design
         primary: {
-          ash: '#D1D5DB',      // Light theme general background (ash gray)
-          purple: '#6B21A8',   // Deep purple for cards
-          gold: '#F59E0B',     // Gold for fonts and accents
-          'gold-light': '#FCD34D', // Lighter gold for hover states
+          // Light mode
+          gray: '#F5F7FA',        // Light background
+          navy: '#2D3250',        // Dark navy for cards
+          'navy-dark': '#1F2937', // Darker navy
+          cyan: '#00D9D9',        // Bright cyan/teal accent
+          'cyan-dark': '#00B8B8', // Darker cyan
+          orange: '#FF9F43',      // Orange for rewards
+          'orange-light': '#FFB976',
         },
         dark: {
-          black: '#0A0A0A',    // Dark theme general background (true black)
-          navy: '#1E3A5F',     // Dark navy blue for cards (makes gold pop!)
-          'navy-dark': '#152B47', // Darker navy for hover
-          gold: '#F59E0B',     // Gold for fonts
+          // Dark mode
+          bg: '#1A1D2E',          // Very dark background
+          card: '#2D3250',        // Navy cards
+          'card-light': '#3A3F5C', // Lighter navy for hover
+          cyan: '#00D9D9',        // Bright cyan accent
+          'cyan-glow': '#00FFFF', // Glowing cyan
+          orange: '#FF9F43',      // Orange for rewards
         }
       },
       backgroundColor: {
         // Light theme backgrounds
-        'light-general': '#E5E7EB',  // Ash background
-        'light-card': '#6B21A8',     // Deep purple cards
+        'light-general': '#F5F7FA',  // Light gray background
+        'light-card': '#2D3250',     // Dark navy cards
         
         // Dark theme backgrounds
-        'dark-general': '#0A0A0A',   // Black background
-        'dark-card': '#1E3A5F',      // Dark navy blue cards
+        'dark-general': '#1A1D2E',   // Very dark navy/black
+        'dark-card': '#2D3250',      // Navy cards (same as light for consistency)
       },
       textColor: {
-        'card-gold': '#F59E0B',      // Gold text on cards
+        'card-light': '#FFFFFF',     // White text on cards
+        'card-muted': '#9CA3AF',     // Muted gray text
+        'cyan': '#00D9D9',           // Cyan text
+        'orange': '#FF9F43',         // Orange text
       },
       borderColor: {
-        'gold': '#F59E0B',           // Gold borders
-        'gold-light': '#FCD34D',     // Light gold borders
+        'cyan': '#00D9D9',           // Cyan borders
+        'cyan-light': '#4DE8E8',     // Light cyan
+        'orange': '#FF9F43',         // Orange borders
       },
       ringColor: {
-        'gold': '#F59E0B',
+        'cyan': '#00D9D9',
       }
     },
   },

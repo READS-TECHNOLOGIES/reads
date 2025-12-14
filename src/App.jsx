@@ -134,6 +134,9 @@ export default function App() {
       navItems.push({ name: 'Admin Panel', icon: Shield, view: 'admin' });
   }
 
+  // Get current page name
+  const currentPageName = navItems.find(item => item.view === view)?.name || 'Dashboard';
+
 
   return (
     <div className={`flex min-h-screen bg-light-general dark:bg-dark-general ${darkMode ? 'dark' : ''}`}>
@@ -206,8 +209,8 @@ export default function App() {
 
         {/* Desktop Header - Shows active tab name */}
         <div className="hidden md:block p-6 bg-primary-navy dark:bg-dark-card border-b border-cyan/20">
-          <h1 className="text-2xl font-bold text-yellow-400 capitalize">
-            {navItems.find(item => item.view === view)?.name || 'Dashboard'}
+          <h1 className="text-2xl font-bold text-yellow-400">
+            {currentPageName}
           </h1>
         </div>
 

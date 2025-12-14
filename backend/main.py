@@ -207,6 +207,82 @@ def get_user_stats(current_user: models.User = Depends(auth.get_current_user), d
         quizzes_taken=quizzes_taken  
     )
 
+# 🏆 NEW: LEADERBOARD ENDPOINT
+@app.get("/leaderboard", response_model=List[schemas.LeaderboardEntry])
+def get_leaderboard(
+    limit: int = 10,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Returns the global leaderboard with user rankings based on:
+    - Total tokens earned
+    - Quizzes passed
+    - Lessons completed
+    """
+    # Subquery for total tokens earned per user
+    tokens_subquery = (
+        db.query(
+            models.Reward.user_id,
+            func.sum(models.Reward.tokens_earned).label('total_tokens')
+        )
+        .group_by(models.Reward.user_id)
+        .subquery()
+    )
+    
+    # Subquery for quizzes passed
+    quizzes_subquery = (
+        db.query(
+            models.QuizResult.user_id,
+            func.count(models.QuizResult.id).label('quizzes_passed')
+        )
+        .group_by(models.QuizResult.user_id)
+        .subquery()
+    )
+    
+    # Subquery for lessons completed
+    lessons_subquery = (
+        db.query(
+            models.LessonProgress.user_id,
+            func.count(models.LessonProgress.id).label('lessons_completed')
+        )
+        .filter(models.LessonProgress.completed == True)
+        .group_by(models.LessonProgress.user_id)
+        .subquery()
+    )
+    
+    # Main query joining everything
+    leaderboard = (
+        db.query(
+            models.User.id,
+            models.User.name,
+            func.coalesce(tokens_subquery.c.total_tokens, 0).label('total_tokens'),
+            func.coalesce(quizzes_subquery.c.quizzes_passed, 0).label('quizzes_passed'),
+            func.coalesce(lessons_subquery.c.lessons_completed, 0).label('lessons_completed')
+        )
+        .outerjoin(tokens_subquery, models.User.id == tokens_subquery.c.user_id)
+        .outerjoin(quizzes_subquery, models.User.id == quizzes_subquery.c.user_id)
+        .outerjoin(lessons_subquery, models.User.id == lessons_subquery.c.user_id)
+        .order_by(desc(func.coalesce(tokens_subquery.c.total_tokens, 0)))
+        .limit(limit)
+        .all()
+    )
+    
+    # Format response with rankings
+    result = []
+    for rank, entry in enumerate(leaderboard, start=1):
+        result.append({
+            "rank": rank,
+            "user_id": str(entry.id),
+            "name": entry.name,
+            "total_tokens": entry.total_tokens or 0,
+            "quizzes_passed": entry.quizzes_passed or 0,
+            "lessons_completed": entry.lessons_completed or 0,
+            "is_current_user": entry.id == current_user.id
+        })
+    
+    return result
+
 # ----------------------------------------------------
 # 3.2 LEARNING CONTENT
 # ----------------------------------------------------

@@ -92,6 +92,20 @@ export const api = {
             const data = await res.json();
             return data;
         },
+        resetPassword: async (token, newPassword) => {
+            const res = await fetch(`${API_URL}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Reset Password');
+            }
+
+            const data = await res.json();
+            return data;
+        },
         me: async () => {
             const token = localStorage.getItem('access_token');
             if (!token) return null;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, BookOpen, Wallet, User, Settings as SettingsIcon, Menu, X, Sun, Moon, LogOut, Shield } from 'lucide-react';
+import readsLogo from '../assets/reads-logo.png';
 
 // --- SERVICE & MODULE IMPORTS ---
 import { api } from './services/api';
@@ -10,7 +11,6 @@ import WalletModule from './modules/wallet/WalletModule.jsx';
 import ProfileModule from './modules/profile/ProfileModule.jsx';
 import SettingsModule from './modules/settings/SettingsModule.jsx';
 import AdminModule from './modules/admin/AdminModule.jsx';
-import readsLogo from './assets/reads-logo.png'; // Import logo
 
 // --- Helper Components ---
 

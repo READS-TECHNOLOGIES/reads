@@ -379,7 +379,7 @@ export default function AuthModule({ view, onLoginSuccess, onNavigate }) {
         case 'forgot-password':
             content = <ForgotPasswordForm onNavigate={onNavigate} />;
             title = 'Reset Password';
-            subtitle = 'We'll help you get back to learning';
+            subtitle = "We'll help you get back to learning";
             break;
         case 'login':
         default:

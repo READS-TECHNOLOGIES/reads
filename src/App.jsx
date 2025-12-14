@@ -9,7 +9,8 @@ import LearnModule from './modules/learn/LearnModule.jsx';
 import WalletModule from './modules/wallet/WalletModule.jsx';
 import ProfileModule from './modules/profile/ProfileModule.jsx';
 import SettingsModule from './modules/settings/SettingsModule.jsx';
-import AdminModule from './modules/admin/AdminModule.jsx'; // <--- IMPORT ADDED
+import AdminModule from './modules/admin/AdminModule.jsx';
+import readsLogo from './assets/reads-logo.png'; // Import logo
 
 // --- Helper Components ---
 
@@ -144,7 +145,7 @@ export default function App() {
       >
         <div className="flex justify-between items-center mb-8">
             <div className='flex items-center gap-3'>
-                <img src="/assets/reads-logo.png" alt="$READS Logo" className="w-8 h-8 rounded-lg" />
+                <img src={readsLogo} alt="$READS Logo" className="w-8 h-8 rounded-lg object-contain" />
                 <span className="font-bold text-lg text-card-light">$READS</span>
             </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1">
@@ -204,11 +205,11 @@ export default function App() {
         </header>
 
         {/* Desktop Header - Shows active tab name */}
-        <header className="hidden md:flex p-6 items-center bg-primary-navy dark:bg-dark-card border-b border-cyan/20 shadow-sm">
+        <div className="hidden md:block p-6 bg-primary-navy dark:bg-dark-card border-b border-cyan/20">
           <h1 className="text-2xl font-bold text-yellow-400 capitalize">
             {navItems.find(item => item.view === view)?.name || 'Dashboard'}
           </h1>
-        </header>
+        </div>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full">

@@ -117,7 +117,13 @@ export default function App() {
     return <div className="flex items-center justify-center h-screen text-lg bg-light-general dark:bg-dark-general text-primary-navy dark:text-card-light">Loading $READS...</div>;
   }
   
-  if (!user || view === 'login') {
+  // Show welcome page if no user and view is 'welcome'
+  if (!user && view === 'welcome') {
+    return <WelcomePage onGetStarted={() => setView('login')} />;
+  }
+  
+  // Show auth module if no user (and not on welcome page)
+  if (!user) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-light-general dark:bg-dark-general p-4">
             <AuthModule 

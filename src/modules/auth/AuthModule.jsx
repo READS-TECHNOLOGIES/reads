@@ -24,10 +24,9 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
         setError('Account created! Please log in.');
         onNavigate('login');
       } else if (view === 'forgot-password') {
-        // TODO: Implement forgot password API call
-        // await api.auth.forgotPassword(formData.email);
-        setError('Password reset link sent to your email!');
-        setTimeout(() => onNavigate('login'), 2000);
+        await api.auth.forgotPassword(formData.email);
+        setError('✅ Password reset link sent to your email!');
+        setTimeout(() => onNavigate('login'), 3000);
       }
     } catch (err) {
       setError(err.message || 'Authentication failed');

@@ -78,6 +78,20 @@ export const api = {
             localStorage.setItem('access_token', data.access_token);
             return data;
         },
+        forgotPassword: async (email) => {
+            const res = await fetch(`${API_URL}/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Send Password Reset Email');
+            }
+
+            const data = await res.json();
+            return data;
+        },
         me: async () => {
             const token = localStorage.getItem('access_token');
             if (!token) return null;

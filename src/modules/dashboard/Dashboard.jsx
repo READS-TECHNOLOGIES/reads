@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayCircle, Wallet, Award, ArrowRight, TrendingUp, BookOpen } from 'lucide-react';
 import { api } from '../../services/api';
+import LeaderboardWidget from './LeaderboardWidget.jsx';
 
 const Dashboard = ({ user, wallet, onNavigate }) => {
   const [stats, setStats] = useState({ lessons_completed: 0, quizzes_taken: 0 });
@@ -80,6 +81,11 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
             Check Balance <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
           </div>
         </button>
+      </div>
+
+      {/* --- 🏆 LEADERBOARD WIDGET --- */}
+      <div className="pt-4">
+        <LeaderboardWidget currentUserId={user.id} />
       </div>
 
       {/* --- Latest Activity / Rewards --- */}

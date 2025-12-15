@@ -210,10 +210,59 @@ export const api = {
             }
             return res.json();
         },
+        
+        // 🆕 NEW: Session-based quiz flow
+        startQuizSession: async (lessonId, lessonReadTime) => {
+            const res = await fetch(`${API_URL}/quiz/start-session`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    lesson_id: lessonId, 
+                    lesson_read_time: lessonReadTime 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Start Quiz Session');
+            }
+            
+            return res.json();
+        },
+        
+        getSessionQuestions: async (sessionToken) => {
+            const res = await fetch(`${API_URL}/quiz/session/${sessionToken}/questions`, {
+                headers: getAuthHeader()
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Session Questions');
+            }
+            
+            return res.json();
+        },
+        
+        submitQuizWithSession: async (sessionToken, answers, timeTaken) => {
+            const res = await fetch(`${API_URL}/quiz/submit-with-session`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({
+                    session_token: sessionToken,
+                    answers: answers,
+                    time_taken: timeTaken
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Submit Quiz');
+            }
+            
+            return res.json();
+        },
+        
+        // Keep old methods for backward compatibility
         getQuizQuestions: async (lessonId) => {
             const res = await fetch(`${API_URL}/lessons/${lessonId}/quiz`, { headers: getAuthHeader() });
 
-            // Uses handleFailedResponse, which now catches 401 (AuthRequired) and 409 (QuizAlreadyCompleted)
             if (!res.ok) {
                 await handleFailedResponse(res, 'Fetch Quiz Questions'); 
             }

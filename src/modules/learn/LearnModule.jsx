@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronRight, ArrowLeft, PlayCircle, Clock, Award, CheckCircle, Trash2, XCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronRight, ArrowLeft, PlayCircle, Clock, Award, CheckCircle, Trash2, XCircle, RefreshCw, AlertTriangle, Shield } from 'lucide-react';
 import { api } from '../../services/api';
 
 // ====================================================================
@@ -30,10 +30,61 @@ const CompletedState = ({ lessonTitle, onNavigate }) => (
 );
 
 // ====================================================================
-// --- 1. Lesson Detail View ---
+// --- 1. Lesson Detail View with Time Tracking ---
 // ====================================================================
 
 const LessonDetailView = ({ lesson, onNavigate }) => {
+    const [readTime, setReadTime] = useState(0);
+    const [isTracking, setIsTracking] = useState(true);
+    const startTimeRef = useRef(Date.now());
+    const intervalRef = useRef(null);
+
+    useEffect(() => {
+        // Start tracking read time
+        startTimeRef.current = Date.now();
+        
+        intervalRef.current = setInterval(() => {
+            if (startTimeRef.current && isTracking) {
+                const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                setReadTime(elapsed);
+            }
+        }, 1000);
+
+        // Track visibility changes
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setIsTracking(false);
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                }
+            } else {
+                setIsTracking(true);
+                startTimeRef.current = Date.now() - (readTime * 1000);
+                intervalRef.current = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                    setReadTime(elapsed);
+                }, 1000);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            
+            // Track final read time
+            if (startTimeRef.current) {
+                const finalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                api.learn.trackLessonTime(lesson.id, finalTime).catch(err => {
+                    console.warn('Failed to track lesson time:', err);
+                });
+            }
+        };
+    }, [lesson.id, readTime, isTracking]);
+
     const safeContent = (lesson.content || 'Content not available.').replace(/\n/g, '<br/>');
 
     const getEmbedUrl = (url) => {
@@ -45,14 +96,33 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
         return url.startsWith('http') ? url : `https://www.youtube.com/embed/${url}`;
     };
 
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const minReadTime = lesson.min_read_time || 30;
+    const canTakeQuiz = readTime >= minReadTime;
+
     return (
         <div className="space-y-6 animate-fade-in">
-            <button 
-                onClick={() => onNavigate('learn', 'list', { name: lesson.category })} 
-                className="flex items-center text-cyan hover:text-primary-cyan-dark text-sm font-medium mb-4 transition-colors"
-            >
-                <ArrowLeft size={16} className="mr-1" /> Back to Lessons
-            </button>
+            <div className="flex items-center justify-between">
+                <button 
+                    onClick={() => onNavigate('learn', 'list', { name: lesson.category })} 
+                    className="flex items-center text-cyan hover:text-primary-cyan-dark text-sm font-medium transition-colors"
+                >
+                    <ArrowLeft size={16} className="mr-1" /> Back to Lessons
+                </button>
+
+                {/* 🆕 Read Time Tracker */}
+                <div className="flex items-center space-x-2 bg-black/30 px-4 py-2 rounded-full border border-cyan-light">
+                    <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                    <Clock size={16} className="text-cyan" />
+                    <span className="text-sm text-white font-semibold">{formatTime(readTime)}</span>
+                </div>
+            </div>
+
             <h2 className="text-3xl font-bold text-gray-800 dark:text-white">{lesson.title}</h2>
             <div className="flex items-center gap-4 text-sm">
                 <span className="bg-cyan/20 text-cyan px-3 py-1 rounded-full font-semibold border border-cyan">{lesson.category}</span>
@@ -82,57 +152,154 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
                 </div>
             )}
 
-            <button
-                onClick={() => onNavigate('learn', 'quiz', { lessonId: lesson.id, lessonTitle: lesson.title, category: lesson.category })}
-                className="w-full py-4 bg-cyan text-white font-bold rounded-xl shadow-lg hover:bg-primary-cyan-dark transition-all flex items-center justify-center gap-2 mt-6 border-2 border-cyan hover:shadow-cyan/50"
-            >
-                <Award size={20} /> Start Quiz to Earn $READS
-            </button>
+            {/* 🆕 Quiz CTA with Time Validation */}
+            <div className={`p-6 rounded-2xl border-2 ${canTakeQuiz ? 'bg-cyan/10 border-cyan' : 'bg-yellow-500/10 border-yellow-500'}`}>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold text-white mb-2">
+                            {canTakeQuiz ? 'Ready to Test Your Knowledge?' : 'Keep Reading...'}
+                        </h3>
+                        {canTakeQuiz ? (
+                            <p className="text-card-muted">Complete the quiz to earn tokens!</p>
+                        ) : (
+                            <p className="text-yellow-400 flex items-center">
+                                <Shield size={16} className="mr-2" />
+                                Read for at least {minReadTime}s before taking the quiz ({minReadTime - readTime}s remaining)
+                            </p>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => onNavigate('learn', 'quiz', { lessonId: lesson.id, lessonTitle: lesson.title, category: lesson.category })}
+                        disabled={!canTakeQuiz}
+                        className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 border-2 
+                            ${canTakeQuiz 
+                                ? 'bg-cyan text-white hover:bg-primary-cyan-dark border-cyan shadow-lg' 
+                                : 'bg-gray-600 text-gray-400 border-gray-600 cursor-not-allowed opacity-50'
+                            }`}
+                    >
+                        <Award size={20} /> {canTakeQuiz ? 'Start Quiz' : 'Locked'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Reading Tips */}
+            <div className="bg-blue-900/20 border border-blue-500/50 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-300 mb-2 flex items-center">
+                    <Shield size={16} className="mr-2" /> 📚 Study Tips
+                </h4>
+                <ul className="text-sm text-blue-200 space-y-1">
+                    <li>• Read carefully to understand key concepts</li>
+                    <li>• Watch the video for better retention</li>
+                    <li>• Minimum read time required: {minReadTime} seconds</li>
+                    <li>• Quiz questions are randomly selected</li>
+                </ul>
+            </div>
         </div>
     );
 };
 
 // ====================================================================
-// --- 2. Quiz View ---
+// --- 2. Quiz View with Anti-Cheat ---
 // ====================================================================
 
 const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     const { lessonId, lessonTitle } = lessonData;
 
+    const [quizAttempt, setQuizAttempt] = useState(null);
     const [questions, setQuestions] = useState([]);
     const [step, setStep] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [answers, setAnswers] = useState({});
+    const [questionTimes, setQuestionTimes] = useState({});
+    const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+    const [attemptStartTime, setAttemptStartTime] = useState(null);
     const [quizResult, setQuizResult] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadError, setLoadError] = useState(null);
+    const [quizStatus, setQuizStatus] = useState(null);
+    const [copyAttempts, setCopyAttempts] = useState(0);
 
+    const quizContainerRef = useRef(null);
+
+    // 🔒 Copy Protection
     useEffect(() => {
-        setLoadError(null);
-        if (lessonId) {
-            api.learn.getQuizQuestions(lessonId)
-                .then(data => {
-                    if (data && data.length > 0) {
-                        setQuestions(data);
-                    } else {
-                        setLoadError("No quiz questions found for this lesson.");
-                    }
-                })
-                .catch(e => {
-                    const errorMessage = e.message || "An unknown error occurred.";
-                    console.error("Failed to load quiz questions:", errorMessage);
+        const preventCopy = (e) => {
+            e.preventDefault();
+            setCopyAttempts(prev => prev + 1);
+            if (copyAttempts >= 2) {
+                alert('⚠️ Copy protection active. Please answer honestly.');
+            }
+        };
 
-                    if (errorMessage.includes("Quiz already completed")) {
-                        setLoadError("COMPLETED");
-                    } else {
-                        setLoadError(`Quiz Load Error: ${errorMessage}`);
-                    }
-                });
+        const preventRightClick = (e) => {
+            e.preventDefault();
+            alert('⚠️ Right-click is disabled during the quiz.');
+        };
+
+        const container = quizContainerRef.current;
+        if (container) {
+            container.addEventListener('copy', preventCopy);
+            container.addEventListener('contextmenu', preventRightClick);
+            
+            return () => {
+                container.removeEventListener('copy', preventCopy);
+                container.removeEventListener('contextmenu', preventRightClick);
+            };
+        }
+    }, [copyAttempts]);
+
+    // Initialize quiz with anti-cheat checks
+    useEffect(() => {
+        const initializeQuiz = async () => {
+            setIsLoading(true);
+            setLoadError(null);
+
+            try {
+                // Check if user can take quiz
+                const status = await api.learn.checkQuizStatus(lessonId);
+                setQuizStatus(status);
+
+                if (!status.can_attempt) {
+                    setLoadError(status.reason);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Start quiz attempt
+                const attempt = await api.learn.startQuizAttempt(lessonId);
+                setQuizAttempt(attempt);
+                setQuestions(attempt.questions);
+                setAttemptStartTime(Date.now());
+                setQuestionStartTime(Date.now());
+                setIsLoading(false);
+
+            } catch (e) {
+                console.error('Failed to initialize quiz:', e);
+                if (e.message === 'QuizAlreadyCompleted') {
+                    setLoadError("COMPLETED");
+                } else if (e.message.includes('Rate limit')) {
+                    setLoadError("Rate limit exceeded. Please try again later.");
+                } else {
+                    setLoadError(`Failed to start quiz: ${e.message}`);
+                }
+                setIsLoading(false);
+            }
+        };
+
+        if (lessonId) {
+            initializeQuiz();
         }
     }, [lessonId]);
 
     const handleAnswerSelect = (optionChar) => {
+        const currentQuestion = questions[step];
+        const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+        
         setSelectedAnswer(optionChar);
+        setQuestionTimes(prev => ({
+            ...prev,
+            [currentQuestion.id]: timeSpent
+        }));
     };
 
     const handleNext = async () => {
@@ -148,35 +315,81 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
         if (step < questions.length - 1) {
             setStep(step + 1);
+            setQuestionStartTime(Date.now());
         } else {
+            // Submit quiz
             setIsLoading(true);
             try {
-                const submissionArray = Object.entries(newAnswers).map(([q_id, selected]) => ({
-                    question_id: q_id,
-                    selected: selected
+                const totalTimeSeconds = Math.floor((Date.now() - attemptStartTime) / 1000);
+                const minTimePerQuestion = quizAttempt.min_time_per_question;
+
+                // Validate minimum time
+                for (const qId of Object.keys(questionTimes)) {
+                    if (questionTimes[qId] < minTimePerQuestion) {
+                        alert(`⚠️ Please spend at least ${minTimePerQuestion} seconds on each question.`);
+                        setIsLoading(false);
+                        return;
+                    }
+                }
+
+                const formattedAnswers = questions.map(q => ({
+                    question_id: q.id,
+                    selected: newAnswers[q.id],
+                    time_spent_seconds: questionTimes[q.id] || minTimePerQuestion
                 }));
 
-                const result = await api.learn.submitQuiz(lessonId, submissionArray);
+                const result = await api.learn.submitQuizAttempt(
+                    lessonId,
+                    quizAttempt.attempt_id,
+                    formattedAnswers,
+                    totalTimeSeconds
+                );
+
                 setQuizResult(result);
                 onUpdateWallet(result.tokens_awarded);
+
+                if (result.flagged_suspicious) {
+                    alert(`⚠️ ${result.message || 'Your submission has been flagged for review.'}`);
+                }
+
             } catch (e) {
                 console.error("Quiz submission failed:", e);
-                setLoadError(`Submission failed. Please check your connection. Error: ${e.message || 'Unknown'}`);
+                setLoadError(`Submission failed: ${e.message || 'Unknown error'}`);
                 setIsLoading(false);
             }
         }
     };
 
+    // Error states
     if (loadError === "COMPLETED") {
         return <CompletedState lessonTitle={lessonTitle} onNavigate={onNavigate} />;
     }
 
     if (loadError) {
         return (
-            <div className="text-center p-8 bg-red-900/20 border-2 border-red-500 rounded-xl shadow-lg animate-fade-in">
-                <XCircle size={48} className="mx-auto mb-3 text-red-500" />
-                <h2 className="text-xl font-semibold text-red-400">Quiz Load Error</h2>
-                <p className="text-red-300 mt-2">{loadError}</p>
+            <div className="text-center p-8 bg-yellow-900/20 border-2 border-yellow-500 rounded-xl shadow-lg animate-fade-in">
+                <AlertTriangle size={48} className="mx-auto mb-3 text-yellow-500" />
+                <h2 className="text-xl font-semibold text-yellow-400">Cannot Start Quiz</h2>
+                <p className="text-yellow-300 mt-2">{loadError}</p>
+                
+                {quizStatus?.cooldown_remaining && (
+                    <p className="text-sm text-yellow-200 mt-2">
+                        ⏱️ Cooldown: {quizStatus.cooldown_remaining}s remaining
+                    </p>
+                )}
+                
+                {quizStatus?.hourly_attempts_remaining !== undefined && (
+                    <p className="text-sm text-yellow-200 mt-1">
+                        Hourly attempts: {quizStatus.hourly_attempts_remaining} left
+                    </p>
+                )}
+                
+                {quizStatus?.daily_attempts_remaining !== undefined && (
+                    <p className="text-sm text-yellow-200 mt-1">
+                        Daily attempts: {quizStatus.daily_attempts_remaining} left
+                    </p>
+                )}
+
                 <button
                     onClick={() => onNavigate('learn', 'detail', lessonId)}
                     className="mt-4 px-4 py-2 text-sm font-medium text-white bg-cyan rounded-lg hover:bg-primary-cyan-dark transition-all border-2 border-cyan"
@@ -187,13 +400,13 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         );
     }
 
-    if (isLoading || (!questions.length && !quizResult)) {
-        return <LoadingState message={isLoading ? "Submitting Quiz and Calculating Rewards..." : `Loading quiz questions for "${lessonTitle}"...`} />;
+    if (isLoading || !questions.length) {
+        return <LoadingState message={isLoading ? "Submitting quiz..." : "Loading quiz..."} />;
     }
 
+    // Quiz result
     if (quizResult) {
-        const { score, correct, wrong, tokens_awarded } = quizResult;
-        const passed = score >= 70;
+        const { score, correct, wrong, tokens_awarded, passed, flagged_suspicious } = quizResult;
 
         return (
             <div className="text-center p-8 bg-light-card dark:bg-dark-card rounded-2xl shadow-xl space-y-6 animate-fade-in border-2 border-cyan">
@@ -201,7 +414,16 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     {passed ? <CheckCircle size={40} className="text-green-500" /> : <XCircle size={40} className="text-red-500" />}
                 </div>
                 <h2 className="text-3xl font-bold text-white">{passed ? "Congratulations!" : "Quiz Failed"}</h2>
-                <p className='text-card-muted'>You scored {score}% for the <strong className="text-white">{lessonTitle}</strong> quiz.</p>
+                <p className='text-card-muted'>You scored {score}% for <strong className="text-white">{lessonTitle}</strong></p>
+
+                {flagged_suspicious && (
+                    <div className="bg-yellow-900/20 border border-yellow-500 rounded-lg p-4">
+                        <p className="text-yellow-400 text-sm flex items-center justify-center">
+                            <AlertTriangle size={16} className="mr-2" />
+                            Your submission was flagged for review
+                        </p>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-4">
                     <div className="p-4 rounded-xl bg-black/30 border-2 border-cyan-light">
@@ -234,11 +456,17 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         );
     }
 
+    // Quiz interface
     const currentQuestion = questions[step];
     const optionChars = ['A', 'B', 'C', 'D'];
+    const progress = ((step + 1) / questions.length) * 100;
 
     return (
-        <div className="animate-fade-in">
+        <div 
+            ref={quizContainerRef}
+            className="animate-fade-in select-none"
+            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+        >
             <button
                 onClick={() => onNavigate('learn', 'detail', lessonId)}
                 className="flex items-center text-cyan hover:text-primary-cyan-dark text-sm font-medium mb-6 transition-colors"
@@ -246,12 +474,24 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 <ArrowLeft size={16} className="mr-1" /> Back to Lesson
             </button>
 
+            {/* 🔒 Copy Protection Warning */}
+            {copyAttempts > 0 && (
+                <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-4">
+                    <p className="text-red-400 text-sm flex items-center">
+                        <Shield size={16} className="mr-2" />
+                        ⚠️ Copy protection active. Please answer honestly.
+                    </p>
+                </div>
+            )}
+
             <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-white">Question {step + 1}/{questions.length}</h3>
+                <span className="text-sm text-card-muted">{Math.round(progress)}% Complete</span>
             </div>
+
             <div className="w-full bg-black/30 rounded-full h-3 mb-8 border border-cyan-light overflow-hidden">
                 <div
-                    style={{ width: `${((step + 1) / questions.length) * 100}%` }}
+                    style={{ width: `${progress}%` }}
                     className="h-full bg-gradient-to-r from-cyan to-primary-cyan-dark rounded-full transition-all duration-300"
                 />
             </div>
@@ -288,6 +528,12 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             >
                 {step < questions.length - 1 ? 'Next Question' : 'Submit Quiz'}
             </button>
+
+            {quizAttempt?.min_time_per_question && (
+                <p className="text-center text-sm text-card-muted mt-4">
+                    ℹ️ Minimum {quizAttempt.min_time_per_question}s per question required
+                </p>
+            )}
         </div>
     );
 };

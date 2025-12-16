@@ -1,395 +1,528 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { api } from '../../services/api';
-import { Clock, Shield, AlertTriangle, Award } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
-// Simple Loading Spinner
-const SimpleLoadingSpinner = () => (
-    <div className="flex justify-center items-center h-full p-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-        <p className="ml-4 text-gray-500 dark:text-gray-400">Loading Content...</p>
-    </div>
-);
+// Vercel routes our /api path to the Python backend function
+const API_URL = "/api"; 
 
-const LessonDetail = ({ lessonId, onNavigate }) => {
-    const [lesson, setLesson] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [errorDetails, setErrorDetails] = useState(null);
-    const [checkingStatus, setCheckingStatus] = useState(false);
-    
-    // Time tracking state
-    const [readTime, setReadTime] = useState(0);
-    const [isTracking, setIsTracking] = useState(true);
-    
-    // Use refs to avoid re-render issues
-    const accumulatedTimeRef = useRef(0);
-    const lastStartTimeRef = useRef(null);
-    const intervalRef = useRef(null);
-    const isInitializedRef = useRef(false);
-
-    // Fetch lesson data
-    useEffect(() => {
-        const fetchLesson = async () => {
-            setLoading(true);
-            setErrorDetails(null);
-            
-            try {
-                if (!lessonId) {
-                    console.error("LessonDetail: No lesson ID provided.");
-                    setErrorDetails({
-                        message: "No lesson ID provided",
-                        lessonId: "undefined",
-                        timestamp: new Date().toISOString()
-                    });
-                    setLoading(false);
-                    return;
-                }
-                
-                const data = await api.learn.getLessonDetail(lessonId); 
-                setLesson(data);
-            } catch (err) {
-                console.error("Error fetching lesson:", err);
-                setErrorDetails({
-                    message: err.message || "Unknown error occurred",
-                    lessonId: lessonId || "undefined",
-                    timestamp: new Date().toISOString(),
-                    stack: err.stack
-                });
-                setLesson(null); 
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLesson();
-    }, [lessonId]);
-
-    // Time tracking - with protection against multiple initializations
-    useEffect(() => {
-        if (!lesson || isInitializedRef.current) return;
-
-        isInitializedRef.current = true;
-        lastStartTimeRef.current = Date.now();
-        accumulatedTimeRef.current = 0;
-        setReadTime(0);
-        setIsTracking(true);
-        
-        // Update displayed time every second
-        intervalRef.current = setInterval(() => {
-            if (lastStartTimeRef.current) {
-                const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
-                const totalTime = accumulatedTimeRef.current + currentSessionTime;
-                setReadTime(totalTime);
-            }
-        }, 1000);
-
-        // Track visibility changes (user switching tabs)
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                // Tab hidden - pause tracking
-                if (lastStartTimeRef.current) {
-                    const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
-                    accumulatedTimeRef.current += currentSessionTime;
-                    lastStartTimeRef.current = null;
-                }
-                setIsTracking(false);
-                if (intervalRef.current) {
-                    clearInterval(intervalRef.current);
-                    intervalRef.current = null;
-                }
-            } else {
-                // Tab visible - resume tracking
-                lastStartTimeRef.current = Date.now();
-                setIsTracking(true);
-                
-                intervalRef.current = setInterval(() => {
-                    if (lastStartTimeRef.current) {
-                        const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
-                        const totalTime = accumulatedTimeRef.current + currentSessionTime;
-                        setReadTime(totalTime);
-                    }
-                }, 1000);
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Cleanup on unmount
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            
-            // Save final read time when leaving
-            if (lessonId) {
-                let finalTime = accumulatedTimeRef.current;
-                if (lastStartTimeRef.current) {
-                    finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
-                }
-                api.learn.trackLessonTime(lessonId, finalTime).catch(err => {
-                    console.warn('Failed to track lesson time:', err);
-                });
-            }
-            
-            isInitializedRef.current = false;
-        };
-    }, [lesson, lessonId]);
-
-    // Check quiz status before allowing start - memoized to prevent unnecessary re-renders
-    const handleStartQuiz = useCallback(async () => {
-        setCheckingStatus(true);
-        
-        try {
-            // Calculate and save final read time
-            let finalTime = accumulatedTimeRef.current;
-            if (lastStartTimeRef.current) {
-                finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
-            }
-            await api.learn.trackLessonTime(lessonId, finalTime);
-
-            // Check if user can take quiz
-            const status = await api.learn.checkQuizStatus(lessonId);
-            
-            if (!status.can_attempt) {
-                // Show error message
-                let errorMsg = status.reason || 'Cannot start quiz at this time';
-                
-                if (status.cooldown_remaining) {
-                    errorMsg += `\n\nCooldown: ${status.cooldown_remaining} seconds remaining`;
-                }
-                
-                if (status.hourly_attempts_remaining !== undefined) {
-                    errorMsg += `\n\nHourly attempts remaining: ${status.hourly_attempts_remaining}`;
-                }
-                
-                if (status.daily_attempts_remaining !== undefined) {
-                    errorMsg += `\n\nDaily attempts remaining: ${status.daily_attempts_remaining}`;
-                }
-                
-                alert(errorMsg);
-                setCheckingStatus(false);
-                return;
-            }
-
-            // Navigate to quiz
-            onNavigate('learn', 'quiz', { 
-                lessonId: lesson.id, 
-                lessonTitle: lesson.title,
-                category: lesson.category 
-            });
-            
-        } catch (err) {
-            console.error('Error checking quiz status:', err);
-            alert('Failed to start quiz. Please try again.');
-        } finally {
-            setCheckingStatus(false);
-        }
-    }, [lessonId, lesson, onNavigate]);
-
-    // Format time display
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+// Function to get the Authorization header
+const getAuthHeader = () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        return { 'Content-Type': 'application/json' };
+    }
+    return { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
     };
-
-    // Get YouTube embed URL
-    const getEmbedUrl = (url) => {
-        if (!url) return null;
-        if (url.includes('youtube.com/watch?v=')) {
-            const match = url.match(/[?&]v=([^&]+)/);
-            return match ? match[1] : null;
-        }
-        if (url.includes('youtu.be/')) {
-            return url.split('youtu.be/')[1].split('?')[0];
-        }
-        return url;
-    };
-
-    // --- RENDER CHECKS ---
-    if (loading) {
-        return <SimpleLoadingSpinner />;
-    }
-
-    // Enhanced error display with debugging info
-    if (!lesson && errorDetails) {
-        return (
-            <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">
-                <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Error Loading Lesson</h2>
-                <p className="text-red-500 dark:text-red-300 mt-2">The lesson details could not be found or loaded.</p>
-                
-                <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/40 rounded-lg text-left max-w-2xl mx-auto">
-                    <p className="text-sm text-red-700 dark:text-red-300 font-mono space-y-2">
-                        <span className="block"><strong>Error:</strong> {errorDetails.message}</span>
-                        <span className="block"><strong>Lesson ID:</strong> {errorDetails.lessonId}</span>
-                        <span className="block"><strong>Time:</strong> {new Date(errorDetails.timestamp).toLocaleString()}</span>
-                    </p>
-                    
-                    <div className="mt-4 pt-4 border-t border-red-300 dark:border-red-700">
-                        <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-2">Troubleshooting:</p>
-                        <ul className="text-xs text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
-                            <li>Check if the backend server is running</li>
-                            <li>Verify the lesson exists in the database</li>
-                            <li>Open browser console (F12) for more details</li>
-                            <li>Check Network tab for API response</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <button 
-                    onClick={() => onNavigate('learn', 'categories')} 
-                    className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition duration-150"
-                >
-                    Go Back to Categories
-                </button>
-            </div>
-        );
-    }
-
-    if (!lesson) {
-        return (
-            <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">
-                <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Lesson Not Found</h2>
-                <p className="text-red-500 dark:text-red-300 mt-2">The content for this lesson could not be loaded.</p>
-                <button 
-                    onClick={() => onNavigate('learn', 'categories')} 
-                    className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition duration-150"
-                >
-                    Go Back to Categories
-                </button>
-            </div>
-        );
-    }
-    
-    const lessonContent = lesson.content || "No content provided for this lesson.";
-    const videoId = getEmbedUrl(lesson.video_url);
-    const minReadTime = lesson.min_read_time || 30;
-    const canTakeQuiz = readTime >= minReadTime;
-
-    return (
-        <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-xl p-4 md:p-8">
-            {/* Header with Back Button and Time Tracker */}
-            <div className="flex items-center justify-between mb-6">
-                <button 
-                    onClick={() => onNavigate('learn', 'lessons', lesson.category)} 
-                    className="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors"
-                >
-                    &larr; Back to {lesson.category} Lessons
-                </button>
-
-                {/* Read Time Tracker */}
-                <div className="flex items-center space-x-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-full border border-indigo-200 dark:border-indigo-700">
-                    <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                    <Clock size={16} className="text-indigo-600 dark:text-indigo-400" />
-                    <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                        {formatTime(readTime)}
-                    </span>
-                </div>
-            </div>
-            
-            <h1 className="text-4xl font-extrabold text-gray-800 dark:text-white mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">
-                {lesson.title}
-            </h1>
-            <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-6">Category: {lesson.category}</p>
-
-            {videoId && (
-                <div className="mb-6 aspect-video rounded-lg overflow-hidden shadow-lg border border-gray-200 dark:border-slate-700">
-                    <iframe
-                        title={`Video: ${lesson.title}`}
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                    ></iframe>
-                </div>
-            )}
-
-            <div 
-                className="prose dark:prose-invert prose-lg max-w-none mt-6 text-gray-700 dark:text-gray-300 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: lessonContent }}
-            />
-
-            {/* Quiz Call-to-Action with Status */}
-            <div className={`mt-8 p-6 rounded-xl border-2 ${
-                canTakeQuiz 
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
-                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700'
-            }`}>
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2 flex items-center">
-                            {canTakeQuiz ? (
-                                <>
-                                    <Award className="mr-2 text-green-600 dark:text-green-400" size={24} />
-                                    Ready to Test Your Knowledge?
-                                </>
-                            ) : (
-                                <>
-                                    <Shield className="mr-2 text-yellow-600 dark:text-yellow-400" size={24} />
-                                    Keep Reading...
-                                </>
-                            )}
-                        </h3>
-                        {canTakeQuiz ? (
-                            <p className="text-gray-600 dark:text-gray-400">
-                                Complete the quiz to earn tokens and track your progress!
-                            </p>
-                        ) : (
-                            <div className="flex items-start space-x-2 text-yellow-700 dark:text-yellow-300">
-                                <AlertTriangle size={20} className="flex-shrink-0 mt-1" />
-                                <div>
-                                    <p className="font-semibold">Minimum read time required</p>
-                                    <p className="text-sm">
-                                        Please read for at least {minReadTime} seconds before taking the quiz.
-                                        <br />
-                                        <span className="font-semibold">Time remaining: {minReadTime - readTime}s</span>
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    
-                    <button
-                        onClick={handleStartQuiz}
-                        disabled={!canTakeQuiz || checkingStatus}
-                        className={`ml-4 px-6 py-3 text-lg font-semibold rounded-full shadow-lg transform transition duration-200 flex items-center space-x-2 ${
-                            canTakeQuiz && !checkingStatus
-                                ? 'text-white bg-green-500 hover:bg-green-600 hover:scale-105'
-                                : 'text-gray-400 bg-gray-300 dark:bg-gray-700 cursor-not-allowed opacity-50'
-                        }`}
-                    >
-                        {checkingStatus ? (
-                            <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                <span>Checking...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Award size={20} />
-                                <span>{canTakeQuiz ? 'Start Quiz' : `Wait ${minReadTime - readTime}s`}</span>
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-
-            {/* Reading Tips */}
-            <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center">
-                    <Shield size={16} className="mr-2" /> 📚 Study Tips
-                </h4>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>• Read the lesson carefully to understand key concepts</li>
-                    <li>• Take notes if needed for better retention</li>
-                    <li>• Watch the video if available for visual learning</li>
-                    <li>• Minimum read time: {minReadTime} seconds (anti-cheat protection)</li>
-                    <li>• Quiz questions are randomly selected from a pool</li>
-                    <li>• Time tracking pauses when you switch tabs</li>
-                </ul>
-            </div>
-        </div>
-    );
 };
 
-// Wrap with React.memo to prevent unnecessary re-renders from parent
-export default React.memo(LessonDetail);
+// Helper function to process failed responses aggressively
+const handleFailedResponse = async (res, action) => {
+    let errorDetail = `Failed to ${action} (Status: ${res.status})`;
+
+    if (res.status === 401) {
+        localStorage.removeItem('access_token');
+        throw new Error('AuthenticationRequired');
+    }
+
+    if (res.status === 409) {
+        throw new Error('QuizAlreadyCompleted');
+    }
+
+    // 🆕 Handle rate limit errors
+    if (res.status === 429) {
+        try {
+            const data = await res.json();
+            throw new Error(data.detail || 'Rate limit exceeded');
+        } catch (e) {
+            throw new Error('Rate limit exceeded. Please try again later.');
+        }
+    }
+
+    try {
+        const data = await res.json();
+        errorDetail = data.detail || errorDetail;
+    } catch (e) {
+        const text = await res.text();
+        errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`; 
+    }
+
+    console.error(`${action} Failed: ${errorDetail}`); 
+    throw new Error(errorDetail);
+}
+
+export const api = {
+    // --- AUTH ---
+    auth: {
+        login: async (email, password) => {
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Login');
+            }
+
+            const data = await res.json();
+            localStorage.setItem('access_token', data.access_token);
+            return data; 
+        },
+        signup: async (name, email, password) => {
+            const res = await fetch(`${API_URL}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Signup');
+            }
+
+            const data = await res.json();
+            localStorage.setItem('access_token', data.access_token);
+            return data;
+        },
+        forgotPassword: async (email) => {
+            const res = await fetch(`${API_URL}/auth/request-password-reset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Send Password Reset Email');
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        resetPassword: async (token, newPassword) => {
+            const res = await fetch(`${API_URL}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Reset Password');
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        me: async () => {
+            const token = localStorage.getItem('access_token');
+            if (!token) return null;
+
+            const res = await fetch(`${API_URL}/user/profile`, { headers: getAuthHeader() });
+
+            if (!res.ok) {
+                return null;
+            }
+
+            const data = await res.json();
+            return {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                is_admin: data.is_admin,
+                cardano_address: data.cardano_address,
+                avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.name}`, 
+                joined: data.created_at,
+            };
+        },
+    },
+
+    // --- PROFILE ---
+    profile: {
+        getStats: async () => {
+            const res = await fetch(`${API_URL}/user/stats`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch User Stats');
+                } catch (e) {
+                    console.error("Non-fatal error fetching user stats:", e.message);
+                }
+                return { lessons_completed: 0, quizzes_taken: 0 };
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        getLeaderboard: async (limit = 10) => {
+            const res = await fetch(`${API_URL}/leaderboard?limit=${limit}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Leaderboard');
+                } catch (e) {
+                    console.error("Non-fatal error fetching leaderboard:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data;
+        },
+    },
+
+    // --- LEARN ---
+    learn: {
+        getCategories: async () => {
+            const res = await fetch(`${API_URL}/lessons/categories`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Categories');
+                } catch (e) {
+                    console.error("Non-fatal error fetching categories:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data.map(cat => ({
+                id: cat.category.toLowerCase(), 
+                name: cat.category, 
+                count: cat.count,
+                color: cat.category === 'JAMB' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+            }));
+        },
+        getLessons: async (categoryName) => {
+            const res = await fetch(`${API_URL}/lessons/category/${categoryName}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Lessons');
+                } catch (e) {
+                    console.error("Non-fatal error fetching lessons:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data.map(l => ({
+                ...l,
+                duration: '15 min'
+            }));
+        },
+        getLessonDetail: async (lessonId) => {
+            const res = await fetch(`${API_URL}/lessons/${lessonId}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Lesson Detail');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Track lesson read time
+        trackLessonTime: async (lessonId, readTimeSeconds) => {
+            const res = await fetch(`${API_URL}/lessons/${lessonId}/track-time`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    lesson_id: lessonId, 
+                    read_time_seconds: readTimeSeconds 
+                })
+            });
+            
+            if (!res.ok) {
+                console.warn('Failed to track lesson time (non-fatal)');
+            }
+            
+            return res.ok;
+        },
+
+        // 🆕 ANTI-CHEAT: Check if user can take quiz
+        checkQuizStatus: async (lessonId) => {
+            const res = await fetch(`${API_URL}/quiz/${lessonId}/status`, {
+                headers: getAuthHeader()
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Check Quiz Status');
+            }
+            
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Start new quiz attempt with random questions
+        startQuizAttempt: async (lessonId) => {
+            const res = await fetch(`${API_URL}/quiz/start`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ lesson_id: lessonId })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Start Quiz Attempt');
+            }
+            
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Submit quiz with timing validation
+        submitQuizAttempt: async (lessonId, attemptId, answers, totalTimeSeconds) => {
+            console.log('🔵 submitQuizAttempt called with:', { 
+                lessonId, 
+                attemptId, 
+                answers, 
+                totalTimeSeconds 
+            });
+            
+            try {
+                const res = await fetch(`${API_URL}/quiz/submit`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ 
+                        lesson_id: lessonId, 
+                        attempt_id: attemptId,
+                        answers: answers,
+                        total_time_seconds: totalTimeSeconds
+                    })
+                });
+
+                console.log('🔵 Quiz submit response status:', res.status);
+
+                if (!res.ok) {
+                    console.log('🔴 Response not OK, handling error...');
+                    await handleFailedResponse(res, 'Submit Quiz');
+                }
+
+                const data = await res.json();
+                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
+                return data;
+                
+            } catch (error) {
+                console.error('🔴 Quiz submit FAILED with error:', error);
+                throw error;
+            }
+        },
+
+        // Keep old methods for backward compatibility (DEPRECATED)
+        getQuizQuestions: async (lessonId) => {
+            console.warn('⚠️ getQuizQuestions is deprecated. Use startQuizAttempt instead.');
+            const res = await fetch(`${API_URL}/lessons/${lessonId}/quiz`, { headers: getAuthHeader() });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Quiz Questions'); 
+            }
+
+            return res.json();
+        },
+        submitQuiz: async (lessonId, answers) => {
+            console.warn('⚠️ submitQuiz is deprecated. Use submitQuizAttempt instead.');
+            console.log('🔵 submitQuiz called with:', { lessonId, answers });
+            
+            try {
+                const res = await fetch(`${API_URL}/quiz/submit`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ lesson_id: lessonId, answers })
+                });
+
+                console.log('🔵 Quiz submit response status:', res.status);
+
+                if (!res.ok) {
+                    console.log('🔴 Response not OK, handling error...');
+                    await handleFailedResponse(res, 'Submit Quiz');
+                }
+
+                const data = await res.json();
+                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
+                return data;
+                
+            } catch (error) {
+                console.error('🔴 Quiz submit FAILED with error:', error);
+                throw error;
+            }
+        }
+    },
+
+    // --- WALLET ---
+    wallet: {
+        getBalance: async () => {
+            const res = await fetch(`${API_URL}/wallet/balance`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Wallet Balance');
+                } catch (e) {
+                    console.error("Non-fatal error fetching balance:", e.message);
+                }
+                return 0;
+            }
+            const data = await res.json();
+            return data.token_balance;
+        },
+        getHistory: async () => {
+            const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Wallet History');
+                } catch (e) {
+                    console.error("Non-fatal error fetching wallet history:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data;
+        }
+    },
+
+    // --- ADMIN ---
+    admin: {
+        getUsers: async () => {
+            const res = await fetch(`${API_URL}/admin/users`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch All Users (Admin)');
+            }
+            return res.json();
+        },
+
+        promoteUser: async (userId, isAdmin) => {
+            const res = await fetch(`${API_URL}/admin/users/${userId}/promote?is_admin=${isAdmin}`, {
+                method: 'PUT',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, isAdmin ? 'Promote User' : 'Demote User');
+            }
+            return res.json();
+        },
+
+        createLesson: async (lessonData) => {
+            const res = await fetch(`${API_URL}/admin/lessons`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(lessonData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Lesson');
+            }
+            return res.json();
+        },
+
+        deleteLesson: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/lessons/${lessonId}`, {
+                method: 'DELETE',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, `Delete Lesson ID ${lessonId}`);
+            }
+            return {};
+        },
+
+        uploadQuiz: async (lessonId, questions) => {
+            const quizRequest = { lesson_id: lessonId, questions };
+
+            const res = await fetch(`${API_URL}/admin/quiz`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(quizRequest)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Upload Quiz Questions');
+            }
+            return res.json();
+        },
+
+        deleteQuiz: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/quiz/${lessonId}`, {
+                method: 'DELETE',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, `Delete Quiz for Lesson ID ${lessonId}`);
+            }
+            return {};
+        },
+
+        getAllLessons: async () => {
+            const res = await fetch(`${API_URL}/admin/lessons`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch All Lessons');
+            }
+            return res.json();
+        },
+
+        createQuiz: async (quizData) => {
+            const res = await fetch(`${API_URL}/admin/quiz`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(quizData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Quiz');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Quiz Configuration Management
+        createQuizConfig: async (configData) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(configData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Quiz Config');
+            }
+            return res.json();
+        },
+
+        updateQuizConfig: async (lessonId, configData) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config/${lessonId}`, {
+                method: 'PUT',
+                headers: getAuthHeader(),
+                body: JSON.stringify(configData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Update Quiz Config');
+            }
+            return res.json();
+        },
+
+        getQuizConfig: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config/${lessonId}`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Get Quiz Config');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: View suspicious attempts
+        getSuspiciousAttempts: async (limit = 50) => {
+            const res = await fetch(`${API_URL}/admin/suspicious-attempts?limit=${limit}`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Suspicious Attempts');
+            }
+            return res.json();
+        },
+    }
+};
+
+// 🟢 Add fetchProtectedData export for WalletModule compatibility
+export const fetchProtectedData = async (endpoint, token, options = {}) => {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+        method: options.method || 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    if (!res.ok) {
+        await handleFailedResponse(res, `Fetch ${endpoint}`);
+    }
+
+    return res.json();
+};

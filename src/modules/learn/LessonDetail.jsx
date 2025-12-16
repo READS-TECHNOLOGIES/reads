@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../../services/api';
 import { Clock, Shield, AlertTriangle, Award } from 'lucide-react';
 
@@ -14,23 +14,17 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
     const [lesson, setLesson] = useState(null);
     const [loading, setLoading] = useState(true);
     const [errorDetails, setErrorDetails] = useState(null);
-    const [quizStatus, setQuizStatus] = useState(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
     
     // Time tracking state
     const [readTime, setReadTime] = useState(0);
     const [isTracking, setIsTracking] = useState(true);
+    
+    // Use refs to avoid re-render issues
     const accumulatedTimeRef = useRef(0);
     const lastStartTimeRef = useRef(null);
     const intervalRef = useRef(null);
-    const isInitializedRef = useRef(false); // 🆕 Prevent multiple initializations
-
-    // 🆕 Debug: Track renders
-    const renderCountRef = useRef(0);
-    useEffect(() => {
-        renderCountRef.current += 1;
-        console.log(`🔄 LessonDetail rendered ${renderCountRef.current} times`);
-    });
+    const isInitializedRef = useRef(false);
 
     // Fetch lesson data
     useEffect(() => {
@@ -50,12 +44,10 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     return;
                 }
                 
-                console.log("📖 Fetching lesson with ID:", lessonId);
                 const data = await api.learn.getLessonDetail(lessonId); 
-                console.log("✅ Lesson data received:", data);
                 setLesson(data);
             } catch (err) {
-                console.error("❌ Error fetching lesson:", err);
+                console.error("Error fetching lesson:", err);
                 setErrorDetails({
                     message: err.message || "Unknown error occurred",
                     lessonId: lessonId || "undefined",
@@ -72,21 +64,9 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
 
     // Time tracking - with protection against multiple initializations
     useEffect(() => {
-        if (!lesson) {
-            console.log("⏸️ No lesson loaded, skipping timer initialization");
-            return;
-        }
+        if (!lesson || isInitializedRef.current) return;
 
-        // 🆕 Prevent multiple initializations
-        if (isInitializedRef.current) {
-            console.log("⚠️ Timer already initialized, skipping");
-            return;
-        }
-
-        console.log("⏰ Initializing timer for lesson:", lesson.id);
         isInitializedRef.current = true;
-
-        // Initialize tracking
         lastStartTimeRef.current = Date.now();
         accumulatedTimeRef.current = 0;
         setReadTime(0);
@@ -97,7 +77,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
             if (lastStartTimeRef.current) {
                 const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
                 const totalTime = accumulatedTimeRef.current + currentSessionTime;
-                console.log(`⏱️ Timer tick: ${totalTime}s (accumulated: ${accumulatedTimeRef.current}s, session: ${currentSessionTime}s)`);
                 setReadTime(totalTime);
             }
         }, 1000);
@@ -105,12 +84,10 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         // Track visibility changes (user switching tabs)
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                console.log("👁️ Tab hidden - pausing timer");
                 // Tab hidden - pause tracking
                 if (lastStartTimeRef.current) {
                     const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
                     accumulatedTimeRef.current += currentSessionTime;
-                    console.log(`💾 Saved session time: ${currentSessionTime}s, total: ${accumulatedTimeRef.current}s`);
                     lastStartTimeRef.current = null;
                 }
                 setIsTracking(false);
@@ -119,7 +96,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     intervalRef.current = null;
                 }
             } else {
-                console.log("👁️ Tab visible - resuming timer");
                 // Tab visible - resume tracking
                 lastStartTimeRef.current = Date.now();
                 setIsTracking(true);
@@ -128,7 +104,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     if (lastStartTimeRef.current) {
                         const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
                         const totalTime = accumulatedTimeRef.current + currentSessionTime;
-                        console.log(`⏱️ Timer tick (resumed): ${totalTime}s`);
                         setReadTime(totalTime);
                     }
                 }, 1000);
@@ -139,7 +114,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
 
         // Cleanup on unmount
         return () => {
-            console.log("🧹 Cleaning up timer");
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
@@ -151,19 +125,17 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 if (lastStartTimeRef.current) {
                     finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
                 }
-                console.log(`💾 Saving final time: ${finalTime}s`);
                 api.learn.trackLessonTime(lessonId, finalTime).catch(err => {
                     console.warn('Failed to track lesson time:', err);
                 });
             }
             
-            // Reset initialization flag
             isInitializedRef.current = false;
         };
     }, [lesson, lessonId]);
 
-    // Check quiz status before allowing start
-    const handleStartQuiz = async () => {
+    // Check quiz status before allowing start - memoized to prevent unnecessary re-renders
+    const handleStartQuiz = useCallback(async () => {
         setCheckingStatus(true);
         
         try {
@@ -172,7 +144,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
             if (lastStartTimeRef.current) {
                 finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
             }
-            console.log(`🎯 Starting quiz, final time: ${finalTime}s`);
             await api.learn.trackLessonTime(lessonId, finalTime);
 
             // Check if user can take quiz
@@ -212,7 +183,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         } finally {
             setCheckingStatus(false);
         }
-    };
+    }, [lessonId, lesson, onNavigate]);
 
     // Format time display
     const formatTime = (seconds) => {
@@ -246,7 +217,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Error Loading Lesson</h2>
                 <p className="text-red-500 dark:text-red-300 mt-2">The lesson details could not be found or loaded.</p>
                 
-                {/* Debug Information Panel */}
                 <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/40 rounded-lg text-left max-w-2xl mx-auto">
                     <p className="text-sm text-red-700 dark:text-red-300 font-mono space-y-2">
                         <span className="block"><strong>Error:</strong> {errorDetails.message}</span>
@@ -254,7 +224,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                         <span className="block"><strong>Time:</strong> {new Date(errorDetails.timestamp).toLocaleString()}</span>
                     </p>
                     
-                    {/* Troubleshooting Tips */}
                     <div className="mt-4 pt-4 border-t border-red-300 dark:border-red-700">
                         <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-2">Troubleshooting:</p>
                         <ul className="text-xs text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
@@ -276,7 +245,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         );
     }
 
-    // If no lesson and no error details (shouldn't happen, but just in case)
     if (!lesson) {
         return (
             <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">
@@ -314,10 +282,6 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     <Clock size={16} className="text-indigo-600 dark:text-indigo-400" />
                     <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
                         {formatTime(readTime)}
-                    </span>
-                    {/* 🆕 Debug display */}
-                    <span className="text-xs text-gray-500 ml-2">
-                        (renders: {renderCountRef.current})
                     </span>
                 </div>
             </div>
@@ -423,21 +387,9 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     <li>• Time tracking pauses when you switch tabs</li>
                 </ul>
             </div>
-
-            {/* 🆕 Debug Panel */}
-            <div className="mt-6 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🔍 Debug Info</h4>
-                <div className="text-xs font-mono space-y-1 text-gray-700 dark:text-gray-300">
-                    <div>Renders: {renderCountRef.current}</div>
-                    <div>Read Time: {readTime}s</div>
-                    <div>Accumulated: {accumulatedTimeRef.current}s</div>
-                    <div>Is Tracking: {isTracking ? 'Yes' : 'No'}</div>
-                    <div>Timer Initialized: {isInitializedRef.current ? 'Yes' : 'No'}</div>
-                    <div>Last Start: {lastStartTimeRef.current ? new Date(lastStartTimeRef.current).toLocaleTimeString() : 'null'}</div>
-                </div>
-            </div>
         </div>
     );
 };
 
-export default LessonDetail;
+// Wrap with React.memo to prevent unnecessary re-renders from parent
+export default React.memo(LessonDetail);

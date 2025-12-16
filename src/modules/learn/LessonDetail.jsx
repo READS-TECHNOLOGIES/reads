@@ -13,10 +13,11 @@ const SimpleLoadingSpinner = () => (
 const LessonDetail = ({ lessonId, onNavigate }) => {
     const [lesson, setLesson] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [errorDetails, setErrorDetails] = useState(null); // 🆕 Added for debugging
     const [quizStatus, setQuizStatus] = useState(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
     
-    // 🆕 TIME TRACKING STATE
+    // Time tracking state
     const [readTime, setReadTime] = useState(0);
     const [isTracking, setIsTracking] = useState(true);
     const startTimeRef = useRef(null);
@@ -26,17 +27,32 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
     useEffect(() => {
         const fetchLesson = async () => {
             setLoading(true);
+            setErrorDetails(null); // Reset error details
+            
             try {
                 if (!lessonId) {
                     console.error("LessonDetail: No lesson ID provided.");
+                    setErrorDetails({
+                        message: "No lesson ID provided",
+                        lessonId: "undefined",
+                        timestamp: new Date().toISOString()
+                    });
                     setLoading(false);
                     return;
                 }
                 
+                console.log("Fetching lesson with ID:", lessonId); // Debug log
                 const data = await api.learn.getLessonDetail(lessonId); 
+                console.log("Lesson data received:", data); // Debug log
                 setLesson(data);
             } catch (err) {
                 console.error("Error fetching lesson:", err);
+                setErrorDetails({
+                    message: err.message || "Unknown error occurred",
+                    lessonId: lessonId || "undefined",
+                    timestamp: new Date().toISOString(),
+                    stack: err.stack // Include stack trace for debugging
+                });
                 setLesson(null); 
             } finally {
                 setLoading(false);
@@ -45,7 +61,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         fetchLesson();
     }, [lessonId]);
 
-    // 🆕 TIME TRACKING - Start tracking when component mounts
+    // Time tracking - Start tracking when component mounts
     useEffect(() => {
         if (!lesson) return;
 
@@ -63,13 +79,11 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         // Track visibility changes (user switching tabs)
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // User left the tab, pause tracking
                 setIsTracking(false);
                 if (intervalRef.current) {
                     clearInterval(intervalRef.current);
                 }
             } else {
-                // User returned, resume tracking
                 setIsTracking(true);
                 startTimeRef.current = Date.now() - (readTime * 1000);
                 intervalRef.current = setInterval(() => {
@@ -100,7 +114,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         };
     }, [lesson, lessonId, readTime, isTracking]);
 
-    // 🆕 Check quiz status before allowing start
+    // Check quiz status before allowing start
     const handleStartQuiz = async () => {
         setCheckingStatus(true);
         
@@ -175,6 +189,44 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         return <SimpleLoadingSpinner />;
     }
 
+    // 🆕 Enhanced error display with debugging info
+    if (!lesson && errorDetails) {
+        return (
+            <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">
+                <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Error Loading Lesson</h2>
+                <p className="text-red-500 dark:text-red-300 mt-2">The lesson details could not be found or loaded.</p>
+                
+                {/* Debug Information Panel */}
+                <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/40 rounded-lg text-left max-w-2xl mx-auto">
+                    <p className="text-sm text-red-700 dark:text-red-300 font-mono space-y-2">
+                        <span className="block"><strong>Error:</strong> {errorDetails.message}</span>
+                        <span className="block"><strong>Lesson ID:</strong> {errorDetails.lessonId}</span>
+                        <span className="block"><strong>Time:</strong> {new Date(errorDetails.timestamp).toLocaleString()}</span>
+                    </p>
+                    
+                    {/* Troubleshooting Tips */}
+                    <div className="mt-4 pt-4 border-t border-red-300 dark:border-red-700">
+                        <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-2">Troubleshooting:</p>
+                        <ul className="text-xs text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
+                            <li>Check if the backend server is running</li>
+                            <li>Verify the lesson exists in the database</li>
+                            <li>Open browser console (F12) for more details</li>
+                            <li>Check Network tab for API response</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <button 
+                    onClick={() => onNavigate('learn', 'categories')} 
+                    className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition duration-150"
+                >
+                    Go Back to Categories
+                </button>
+            </div>
+        );
+    }
+
+    // If no lesson and no error details (shouldn't happen, but just in case)
     if (!lesson) {
         return (
             <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">
@@ -206,7 +258,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     &larr; Back to {lesson.category} Lessons
                 </button>
 
-                {/* 🆕 Read Time Tracker */}
+                {/* Read Time Tracker */}
                 <div className="flex items-center space-x-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-full border border-indigo-200 dark:border-indigo-700">
                     <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
                     <Clock size={16} className="text-indigo-600 dark:text-indigo-400" />
@@ -239,7 +291,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 dangerouslySetInnerHTML={{ __html: lessonContent }}
             />
 
-            {/* 🆕 Quiz Call-to-Action with Status */}
+            {/* Quiz Call-to-Action with Status */}
             <div className={`mt-8 p-6 rounded-xl border-2 ${
                 canTakeQuiz 
                     ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
@@ -303,7 +355,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 </div>
             </div>
 
-            {/* 🆕 Reading Tips */}
+            {/* Reading Tips */}
             <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center">
                     <Shield size={16} className="mr-2" /> 📚 Study Tips

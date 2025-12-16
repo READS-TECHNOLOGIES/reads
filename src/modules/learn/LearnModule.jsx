@@ -36,33 +36,55 @@ const CompletedState = ({ lessonTitle, onNavigate }) => (
 const LessonDetailView = ({ lesson, onNavigate }) => {
     const [readTime, setReadTime] = useState(0);
     const [isTracking, setIsTracking] = useState(true);
-    const startTimeRef = useRef(Date.now());
+    const accumulatedTimeRef = useRef(0);
+    const lastStartTimeRef = useRef(null);
     const intervalRef = useRef(null);
+    const isInitializedRef = useRef(false);
 
     useEffect(() => {
-        // Start tracking read time
-        startTimeRef.current = Date.now();
+        // Prevent multiple initializations
+        if (isInitializedRef.current) return;
         
+        isInitializedRef.current = true;
+        lastStartTimeRef.current = Date.now();
+        accumulatedTimeRef.current = 0;
+        setReadTime(0);
+        setIsTracking(true);
+        
+        // Update displayed time every second
         intervalRef.current = setInterval(() => {
-            if (startTimeRef.current && isTracking) {
-                const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                setReadTime(elapsed);
+            if (lastStartTimeRef.current) {
+                const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                const totalTime = accumulatedTimeRef.current + currentSessionTime;
+                setReadTime(totalTime);
             }
         }, 1000);
 
         // Track visibility changes
         const handleVisibilityChange = () => {
             if (document.hidden) {
+                // Tab hidden - pause tracking
+                if (lastStartTimeRef.current) {
+                    const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                    accumulatedTimeRef.current += currentSessionTime;
+                    lastStartTimeRef.current = null;
+                }
                 setIsTracking(false);
                 if (intervalRef.current) {
                     clearInterval(intervalRef.current);
+                    intervalRef.current = null;
                 }
             } else {
+                // Tab visible - resume tracking
+                lastStartTimeRef.current = Date.now();
                 setIsTracking(true);
-                startTimeRef.current = Date.now() - (readTime * 1000);
+                
                 intervalRef.current = setInterval(() => {
-                    const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                    setReadTime(elapsed);
+                    if (lastStartTimeRef.current) {
+                        const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                        const totalTime = accumulatedTimeRef.current + currentSessionTime;
+                        setReadTime(totalTime);
+                    }
                 }, 1000);
             }
         };
@@ -76,14 +98,20 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             
             // Track final read time
-            if (startTimeRef.current) {
-                const finalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            if (lesson?.id) {
+                let finalTime = accumulatedTimeRef.current;
+                if (lastStartTimeRef.current) {
+                    finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                }
                 api.learn.trackLessonTime(lesson.id, finalTime).catch(err => {
                     console.warn('Failed to track lesson time:', err);
                 });
             }
+            
+            // Reset for next mount
+            isInitializedRef.current = false;
         };
-    }, [lesson.id, readTime, isTracking]);
+    }, [lesson?.id]); // ✅ Only depend on lesson.id
 
     const safeContent = (lesson.content || 'Content not available.').replace(/\n/g, '<br/>');
 
@@ -115,7 +143,7 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
                     <ArrowLeft size={16} className="mr-1" /> Back to Lessons
                 </button>
 
-                {/* 🆕 Read Time Tracker */}
+                {/* Read Time Tracker */}
                 <div className="flex items-center space-x-2 bg-black/30 px-4 py-2 rounded-full border border-cyan-light">
                     <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
                     <Clock size={16} className="text-cyan" />
@@ -152,7 +180,7 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
                 </div>
             )}
 
-            {/* 🆕 Quiz CTA with Time Validation */}
+            {/* Quiz CTA with Time Validation */}
             <div className={`p-6 rounded-2xl border-2 ${canTakeQuiz ? 'bg-cyan/10 border-cyan' : 'bg-yellow-500/10 border-yellow-500'}`}>
                 <div className="flex items-center justify-between">
                     <div>

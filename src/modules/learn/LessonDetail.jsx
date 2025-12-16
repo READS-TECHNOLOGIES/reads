@@ -17,10 +17,11 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
     const [quizStatus, setQuizStatus] = useState(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
     
-    // Time tracking state
+    // Time tracking state - simplified approach
     const [readTime, setReadTime] = useState(0);
     const [isTracking, setIsTracking] = useState(true);
-    const startTimeRef = useRef(null);
+    const accumulatedTimeRef = useRef(0); // Total time accumulated
+    const lastStartTimeRef = useRef(null); // When current session started
     const intervalRef = useRef(null);
 
     // Fetch lesson data
@@ -61,40 +62,48 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         fetchLesson();
     }, [lessonId]);
 
-    // Time tracking - Start tracking when component mounts
+    // Time tracking - Simplified and fixed
     useEffect(() => {
         if (!lesson) return;
 
-        // Start tracking read time
-        startTimeRef.current = Date.now();
+        // Initialize tracking
+        lastStartTimeRef.current = Date.now();
+        accumulatedTimeRef.current = 0;
         setIsTracking(true);
         
+        // Update displayed time every second
         intervalRef.current = setInterval(() => {
-            if (startTimeRef.current && isTracking) {
-                const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                setReadTime(elapsed);
+            if (lastStartTimeRef.current) {
+                const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                const totalTime = accumulatedTimeRef.current + currentSessionTime;
+                setReadTime(totalTime);
             }
         }, 1000);
 
         // Track visibility changes (user switching tabs)
         const handleVisibilityChange = () => {
             if (document.hidden) {
+                // Tab hidden - pause tracking
+                if (lastStartTimeRef.current) {
+                    const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                    accumulatedTimeRef.current += currentSessionTime;
+                    lastStartTimeRef.current = null;
+                }
                 setIsTracking(false);
                 if (intervalRef.current) {
                     clearInterval(intervalRef.current);
+                    intervalRef.current = null;
                 }
             } else {
+                // Tab visible - resume tracking
+                lastStartTimeRef.current = Date.now();
                 setIsTracking(true);
-                // Use callback to get the current readTime value
-                setReadTime(prevReadTime => {
-                    startTimeRef.current = Date.now() - (prevReadTime * 1000);
-                    return prevReadTime;
-                });
                 
                 intervalRef.current = setInterval(() => {
-                    if (startTimeRef.current) {
-                        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                        setReadTime(elapsed);
+                    if (lastStartTimeRef.current) {
+                        const currentSessionTime = Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                        const totalTime = accumulatedTimeRef.current + currentSessionTime;
+                        setReadTime(totalTime);
                     }
                 }, 1000);
             }
@@ -110,8 +119,11 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             
             // Save final read time when leaving
-            if (startTimeRef.current && lessonId) {
-                const finalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            if (lessonId) {
+                let finalTime = accumulatedTimeRef.current;
+                if (lastStartTimeRef.current) {
+                    finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
+                }
                 api.learn.trackLessonTime(lessonId, finalTime).catch(err => {
                     console.warn('Failed to track lesson time:', err);
                 });
@@ -124,11 +136,12 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         setCheckingStatus(true);
         
         try {
-            // Save final read time
-            if (startTimeRef.current) {
-                const finalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                await api.learn.trackLessonTime(lessonId, finalTime);
+            // Calculate and save final read time
+            let finalTime = accumulatedTimeRef.current;
+            if (lastStartTimeRef.current) {
+                finalTime += Math.floor((Date.now() - lastStartTimeRef.current) / 1000);
             }
+            await api.learn.trackLessonTime(lessonId, finalTime);
 
             // Check if user can take quiz
             const status = await api.learn.checkQuizStatus(lessonId);

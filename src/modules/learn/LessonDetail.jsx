@@ -13,7 +13,7 @@ const SimpleLoadingSpinner = () => (
 const LessonDetail = ({ lessonId, onNavigate }) => {
     const [lesson, setLesson] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [errorDetails, setErrorDetails] = useState(null); // 🆕 Added for debugging
+    const [errorDetails, setErrorDetails] = useState(null);
     const [quizStatus, setQuizStatus] = useState(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
     
@@ -27,7 +27,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
     useEffect(() => {
         const fetchLesson = async () => {
             setLoading(true);
-            setErrorDetails(null); // Reset error details
+            setErrorDetails(null);
             
             try {
                 if (!lessonId) {
@@ -41,9 +41,9 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     return;
                 }
                 
-                console.log("Fetching lesson with ID:", lessonId); // Debug log
+                console.log("Fetching lesson with ID:", lessonId);
                 const data = await api.learn.getLessonDetail(lessonId); 
-                console.log("Lesson data received:", data); // Debug log
+                console.log("Lesson data received:", data);
                 setLesson(data);
             } catch (err) {
                 console.error("Error fetching lesson:", err);
@@ -51,7 +51,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     message: err.message || "Unknown error occurred",
                     lessonId: lessonId || "undefined",
                     timestamp: new Date().toISOString(),
-                    stack: err.stack // Include stack trace for debugging
+                    stack: err.stack
                 });
                 setLesson(null); 
             } finally {
@@ -85,7 +85,12 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 }
             } else {
                 setIsTracking(true);
-                startTimeRef.current = Date.now() - (readTime * 1000);
+                // Use callback to get the current readTime value
+                setReadTime(prevReadTime => {
+                    startTimeRef.current = Date.now() - (prevReadTime * 1000);
+                    return prevReadTime;
+                });
+                
                 intervalRef.current = setInterval(() => {
                     if (startTimeRef.current) {
                         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -112,7 +117,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                 });
             }
         };
-    }, [lesson, lessonId, readTime, isTracking]);
+    }, [lesson, lessonId]);
 
     // Check quiz status before allowing start
     const handleStartQuiz = async () => {
@@ -181,7 +186,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         if (url.includes('youtu.be/')) {
             return url.split('youtu.be/')[1].split('?')[0];
         }
-        return url; // Assume it's just the ID
+        return url;
     };
 
     // --- RENDER CHECKS ---
@@ -189,7 +194,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
         return <SimpleLoadingSpinner />;
     }
 
-    // 🆕 Enhanced error display with debugging info
+    // Enhanced error display with debugging info
     if (!lesson && errorDetails) {
         return (
             <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500 rounded-xl">

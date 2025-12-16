@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  # ✅ Added timezone import
 from uuid import UUID
 import uuid
 import os
@@ -45,7 +45,7 @@ def check_rate_limit(user_id: UUID, db: Session) -> dict:
         models.QuizRateLimit.user_id == user_id
     ).first()
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
     
     if not rate_limit:
         # Create new rate limit record
@@ -108,7 +108,8 @@ def check_cooldown(user_id: UUID, lesson_id: UUID, cooldown_seconds: int, db: Se
     if not last_attempt:
         return {"can_attempt": True}
     
-    time_since_last = (datetime.utcnow() - last_attempt.started_at).total_seconds()
+    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    time_since_last = (now - last_attempt.started_at).total_seconds()
     
     if time_since_last < cooldown_seconds:
         remaining = int(cooldown_seconds - time_since_last)
@@ -129,7 +130,7 @@ def increment_rate_limit(user_id: UUID, db: Session):
     if rate_limit:
         rate_limit.hourly_attempts += 1
         rate_limit.daily_attempts += 1
-        rate_limit.last_attempt_at = datetime.utcnow()
+        rate_limit.last_attempt_at = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
         db.commit()
 
 # ----------------------------------------------------
@@ -499,7 +500,7 @@ def start_quiz_attempt(
         user_id=current_user.id,
         lesson_id=lesson_id,
         question_ids=question_ids,
-        started_at=datetime.utcnow()
+        started_at=datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
     )
     db.add(attempt)
     
@@ -559,7 +560,8 @@ def submit_quiz(
         raise HTTPException(status_code=404, detail="Quiz config not found")
     
     # ⏱️ TIME VALIDATION
-    time_elapsed = (datetime.utcnow() - attempt.started_at).total_seconds()
+    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    time_elapsed = (now - attempt.started_at).total_seconds()
     min_expected_time = len(submission.answers) * config.min_time_per_question
     
     flagged_suspicious = False
@@ -614,7 +616,7 @@ def submit_quiz(
         db.add(new_reward)
     
     # Update attempt
-    attempt.completed_at = datetime.utcnow()
+    attempt.completed_at = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
     attempt.total_time_seconds = submission.total_time_seconds
     attempt.flagged_suspicious = flagged_suspicious
     attempt.score = score

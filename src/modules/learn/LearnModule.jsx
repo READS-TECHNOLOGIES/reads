@@ -279,34 +279,57 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     // Initialize quiz with anti-cheat checks
     useEffect(() => {
         const initializeQuiz = async () => {
+            console.log('🎯 Initializing quiz for lesson:', lessonId);
             setIsLoading(true);
             setLoadError(null);
 
             try {
                 // Check if user can take quiz
+                console.log('📋 Step 1: Checking quiz status...');
                 const status = await api.learn.checkQuizStatus(lessonId);
+                console.log('✅ Quiz status received:', status);
                 setQuizStatus(status);
 
                 if (!status.can_attempt) {
+                    console.log('❌ Cannot attempt quiz:', status.reason);
                     setLoadError(status.reason);
                     setIsLoading(false);
                     return;
                 }
 
                 // Start quiz attempt
+                console.log('🚀 Step 2: Starting quiz attempt...');
                 const attempt = await api.learn.startQuizAttempt(lessonId);
+                console.log('✅ Quiz attempt started:', attempt);
+                
+                if (!attempt || !attempt.questions || attempt.questions.length === 0) {
+                    console.error('❌ No questions received in attempt:', attempt);
+                    setLoadError('No quiz questions available for this lesson.');
+                    setIsLoading(false);
+                    return;
+                }
+                
                 setQuizAttempt(attempt);
                 setQuestions(attempt.questions);
                 setAttemptStartTime(Date.now());
                 setQuestionStartTime(Date.now());
+                console.log('✅ Quiz initialized successfully with', attempt.questions.length, 'questions');
                 setIsLoading(false);
 
             } catch (e) {
-                console.error('Failed to initialize quiz:', e);
+                console.error('❌ Failed to initialize quiz:', e);
+                console.error('Error details:', {
+                    message: e.message,
+                    stack: e.stack,
+                    lessonId: lessonId
+                });
+                
                 if (e.message === 'QuizAlreadyCompleted') {
                     setLoadError("COMPLETED");
                 } else if (e.message.includes('Rate limit')) {
                     setLoadError("Rate limit exceeded. Please try again later.");
+                } else if (e.message.includes('404')) {
+                    setLoadError("Quiz not found for this lesson. Please contact admin.");
                 } else {
                     setLoadError(`Failed to start quiz: ${e.message}`);
                 }
@@ -315,7 +338,12 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         };
 
         if (lessonId) {
+            console.log('🎮 QuizView mounted with lessonId:', lessonId);
             initializeQuiz();
+        } else {
+            console.error('❌ No lessonId provided to QuizView');
+            setLoadError('No lesson ID provided');
+            setIsLoading(false);
         }
     }, [lessonId]);
 
@@ -429,7 +457,23 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     }
 
     if (isLoading || !questions.length) {
-        return <LoadingState message={isLoading ? "Submitting quiz..." : "Loading quiz..."} />;
+        const loadingMessage = isLoading && quizResult 
+            ? "Submitting quiz..." 
+            : isLoading && !quizAttempt
+            ? "Loading quiz..."
+            : isLoading && quizAttempt
+            ? "Preparing questions..."
+            : "Initializing...";
+            
+        return (
+            <div className="p-8 text-center">
+                <LoadingState message={loadingMessage} />
+                <p className="text-xs text-card-muted mt-4">
+                    Debug: isLoading={String(isLoading)}, questions={questions.length}, 
+                    quizAttempt={quizAttempt ? 'loaded' : 'null'}, loadError={loadError || 'none'}
+                </p>
+            </div>
+        );
     }
 
     // Quiz result

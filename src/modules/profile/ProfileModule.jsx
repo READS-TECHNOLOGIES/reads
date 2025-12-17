@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Calendar, LogOut, Shield, Trash2, AlertCircle } from 'lucide-react';
+import { api } from '../api'; // Adjust path as needed
 
 const ProfileModule = ({ user, onLogout }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -23,21 +24,8 @@ const ProfileModule = ({ user, onLogout }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/account/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add your auth token if you're using one
-          // 'Authorization': `Bearer ${yourAuthToken}`
-        },
-        credentials: 'include', // If using cookies for auth
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to delete account');
-      }
-
+      await api.auth.deleteAccount();
+      
       // Account deleted successfully
       alert('Your account has been permanently deleted.');
       // Redirect to home or login page

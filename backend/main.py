@@ -291,46 +291,48 @@ def delete_user_account(
     try:
         # Delete in correct order to avoid foreign key constraint violations
         
-        # 1. Delete quiz-related data
-        db.query(models.QuizAttempt).filter(
-            models.QuizAttempt.user_id == user_id
-        ).delete(synchronize_session=False)
-        
+        # 1. Delete quiz results FIRST 
         db.query(models.QuizResult).filter(
             models.QuizResult.user_id == user_id
         ).delete(synchronize_session=False)
         
+        # 2. Now delete quiz attempts 
+        db.query(models.QuizAttempt).filter(
+            models.QuizAttempt.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 3. Delete rate limits
         db.query(models.QuizRateLimit).filter(
             models.QuizRateLimit.user_id == user_id
         ).delete(synchronize_session=False)
         
-        # 2. Delete lesson progress
+        # 4. Delete lesson progress
         db.query(models.LessonProgress).filter(
             models.LessonProgress.user_id == user_id
         ).delete(synchronize_session=False)
         
-        # 3. Delete rewards
+        # 5. Delete rewards
         db.query(models.Reward).filter(
             models.Reward.user_id == user_id
         ).delete(synchronize_session=False)
         
-        # 4. Delete wallet
+        # 6. Delete wallet
         db.query(models.Wallet).filter(
             models.Wallet.user_id == user_id
         ).delete(synchronize_session=False)
         
-        # 5. Delete password reset tokens
+        # 7. Delete password reset tokens
         db.query(models.PasswordResetToken).filter(
             models.PasswordResetToken.user_id == user_id
         ).delete(synchronize_session=False)
         
-        # 6. Finally delete the user
+        # 8. Finally delete the user
         db.delete(current_user)
         
         # Commit all deletions
         db.commit()
         
-        # Optional: Send goodbye email in background
+        # Send goodbye email in background
         background_tasks.add_task(
             email_service.send_account_deletion_confirmation_email,
             user_email,
@@ -352,6 +354,8 @@ def delete_user_account(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete account. Please try again later."
         )
+
+#Leaderboard
 @app.get("/leaderboard", response_model=List[schemas.LeaderboardEntry])
 def get_leaderboard(
     limit: int = 10,

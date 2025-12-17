@@ -183,3 +183,74 @@ def send_welcome_email(user_email: str, user_name: str):
         print(f"   Error Message: {str(e)}")
         print(f"   To: {user_email}")
         return False
+
+def send_account_deletion_confirmation_email(user_email: str, user_name: str):
+    """
+    Send a confirmation email when a user deletes their account.
+    This serves as a final record and security measure.
+    """
+    subject = "Your $READS Account Has Been Deleted"
+    
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1a202c;">Account Deletion Confirmed</h2>
+                
+                <p>Hi {user_name},</p>
+                
+                <p>This email confirms that your $READS account has been permanently deleted as you requested.</p>
+                
+                <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>What was deleted:</strong></p>
+                    <ul style="margin: 10px 0;">
+                        <li>Your user profile and account information</li>
+                        <li>All lesson progress and quiz results</li>
+                        <li>Your wallet and token balance</li>
+                        <li>All rewards and transaction history</li>
+                    </ul>
+                </div>
+                
+                <p>If you didn't request this deletion, please contact our support team immediately at <a href="mailto:readstechnologies@gmail.com">readstechnologies@gmail.com</a></p>
+                
+                <p>We're sorry to see you go! If you'd like to share feedback about your experience, we'd love to hear from you.</p>
+                
+                <p>Thank you for being part of the $READS community.</p>
+                
+                <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.9em;">
+                    <strong>The $READS Team</strong><br>
+                    This is an automated message. Please do not reply to this email.
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    text_content = f"""
+    Account Deletion Confirmed
+    
+    Hi {user_name},
+    
+    This email confirms that your $READS account has been permanently deleted as you requested.
+    
+    What was deleted:
+    - Your user profile and account information
+    - All lesson progress and quiz results
+    - Your wallet and token balance
+    - All rewards and transaction history
+    
+    If you didn't request this deletion, please contact our support team immediately at readstechnologies@gmail.com 
+    
+    We're sorry to see you go! If you'd like to share feedback about your experience, we'd love to hear from you.
+    
+    Thank you for being part of the $READS community.
+    
+    The $READS Team
+    """
+    
+    try:
+        send_email(user_email, subject, html_content, text_content)
+        print(f"✅ Account deletion confirmation email sent to {user_email}")
+    except Exception as e:
+        print(f"⚠️ Failed to send deletion confirmation email to {user_email}: {str(e)}")
+        # Don't raise exception - deletion should still succeed even if email fails

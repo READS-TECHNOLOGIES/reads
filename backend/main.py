@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
 from typing import List
-from datetime import datetime, timedelta, timezone  # ✅ Added timezone import
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import uuid
 import os
@@ -45,7 +45,7 @@ def check_rate_limit(user_id: UUID, db: Session) -> dict:
         models.QuizRateLimit.user_id == user_id
     ).first()
     
-    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    now = datetime.now(timezone.utc)
     
     if not rate_limit:
         # Create new rate limit record
@@ -108,7 +108,7 @@ def check_cooldown(user_id: UUID, lesson_id: UUID, cooldown_seconds: int, db: Se
     if not last_attempt:
         return {"can_attempt": True}
     
-    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    now = datetime.now(timezone.utc)
     time_since_last = (now - last_attempt.started_at).total_seconds()
     
     if time_since_last < cooldown_seconds:
@@ -121,6 +121,24 @@ def check_cooldown(user_id: UUID, lesson_id: UUID, cooldown_seconds: int, db: Se
     
     return {"can_attempt": True}
 
+def check_already_passed(user_id: UUID, lesson_id: UUID, db: Session) -> dict:
+    """Check if user has already passed this quiz."""
+    # Check if user has a successful attempt
+    passed_attempt = db.query(models.QuizAttempt).filter(
+        models.QuizAttempt.user_id == user_id,
+        models.QuizAttempt.lesson_id == lesson_id,
+        models.QuizAttempt.passed == True
+    ).first()
+    
+    if passed_attempt:
+        return {
+            "can_attempt": False,
+            "reason": "Quiz already completed successfully",
+            "already_passed": True
+        }
+    
+    return {"can_attempt": True, "already_passed": False}
+
 def increment_rate_limit(user_id: UUID, db: Session):
     """Increment the user's attempt counters."""
     rate_limit = db.query(models.QuizRateLimit).filter(
@@ -130,7 +148,7 @@ def increment_rate_limit(user_id: UUID, db: Session):
     if rate_limit:
         rate_limit.hourly_attempts += 1
         rate_limit.daily_attempts += 1
-        rate_limit.last_attempt_at = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+        rate_limit.last_attempt_at = datetime.now(timezone.utc)
         db.commit()
 
 # ----------------------------------------------------
@@ -413,7 +431,7 @@ def check_quiz_status(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Check if user can attempt quiz (cooldown, rate limits)."""
+    """Check if user can attempt quiz (cooldown, rate limits, already passed)."""
     try:
         lesson_uuid = UUID(lesson_id)
     except ValueError:
@@ -429,6 +447,11 @@ def check_quiz_status(
             can_attempt=False,
             reason="Quiz not configured for this lesson"
         )
+    
+    # 🆕 CHECK IF ALREADY PASSED - This prevents retakes
+    passed_status = check_already_passed(current_user.id, lesson_uuid, db)
+    if not passed_status["can_attempt"]:
+        return schemas.QuizAttemptStatus(**passed_status)
     
     # Check rate limits
     rate_status = check_rate_limit(current_user.id, db)
@@ -467,7 +490,7 @@ def start_quiz_attempt(
     """Start a new quiz attempt with random questions."""
     lesson_id = start_data.lesson_id
     
-    # Verify can attempt
+    # Verify can attempt (includes already passed check)
     status = check_quiz_status(str(lesson_id), db, current_user)
     if not status.can_attempt:
         raise HTTPException(status_code=429, detail=status.reason)
@@ -500,7 +523,7 @@ def start_quiz_attempt(
         user_id=current_user.id,
         lesson_id=lesson_id,
         question_ids=question_ids,
-        started_at=datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+        started_at=datetime.now(timezone.utc)
     )
     db.add(attempt)
     
@@ -560,7 +583,7 @@ def submit_quiz(
         raise HTTPException(status_code=404, detail="Quiz config not found")
     
     # ⏱️ TIME VALIDATION
-    now = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    now = datetime.now(timezone.utc)
     time_elapsed = (now - attempt.started_at).total_seconds()
     min_expected_time = len(submission.answers) * config.min_time_per_question
     
@@ -616,7 +639,7 @@ def submit_quiz(
         db.add(new_reward)
     
     # Update attempt
-    attempt.completed_at = datetime.now(timezone.utc)  # ✅ Fixed: timezone-aware
+    attempt.completed_at = datetime.now(timezone.utc)
     attempt.total_time_seconds = submission.total_time_seconds
     attempt.flagged_suspicious = flagged_suspicious
     attempt.score = score

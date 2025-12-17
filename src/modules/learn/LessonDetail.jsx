@@ -385,6 +385,7 @@ const LessonDetail = ({ lessonId, onNavigate }) => {
                     <li>• Minimum read time: {minReadTime} seconds (anti-cheat protection)</li>
                     <li>• Quiz questions are randomly selected from a pool</li>
                     <li>• Time tracking pauses when you switch tabs</li>
+ <li>• Copy text from the Quiz page is disabled, so if you try to copy any text from the page, your Quiz will ne flagged for review</li>
                 </ul>
             </div>
         </div>

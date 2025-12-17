@@ -8,11 +8,13 @@ from fastapi import HTTPException, status
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@readstechnologies.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://reads-phi.vercel.app")
+LOGO_URL = "https://i.imgur.com/SMSSYph.png"  # Direct Imgur link to your logo
 
 print(f"📧 Email Service Initialized:")
 print(f"   - API Key Present: {'Yes' if SENDGRID_API_KEY else 'NO - EMAIL WILL NOT WORK'}")
 print(f"   - From Email: {SENDGRID_FROM_EMAIL}")
 print(f"   - Frontend URL: {FRONTEND_URL}")
+print(f"   - Logo URL: {LOGO_URL}")
 
 if not SENDGRID_API_KEY:
     print("⚠️  WARNING: SENDGRID_API_KEY not set. Email functionality will not work.")
@@ -48,9 +50,10 @@ def send_password_reset_email(user_email: str, reset_token: str):
             <html>
                 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                     <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                        <!-- Header -->
+                        <!-- Header with Logo -->
                         <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #4F46E5; margin: 0;">$READS</h1>
+                            <img src="{LOGO_URL}" alt="READS Logo" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                            <h1 style="color: #4F46E5; margin: 10px 0;">$READS</h1>
                             <p style="color: #666; margin: 5px 0;">Learn to Earn</p>
                         </div>
                         
@@ -62,7 +65,7 @@ def send_password_reset_email(user_email: str, reset_token: str):
                             
                             <p>We received a request to reset your password for your $READS account. If you didn't make this request, you can safely ignore this email.</p>
                             
-                            <p style="margin: 30px 0;">
+                            <p style="margin: 30px 0; text-align: center;">
                                 <a href="{reset_link}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                                     Reset Password
                                 </a>
@@ -134,8 +137,10 @@ def send_welcome_email(user_email: str, user_name: str):
             <html>
                 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                     <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                        <!-- Header with Logo -->
                         <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #4F46E5; margin: 0;">$READS</h1>
+                            <img src="{LOGO_URL}" alt="READS Logo" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                            <h1 style="color: #4F46E5; margin: 10px 0;">$READS</h1>
                             <p style="color: #666; margin: 5px 0;">Learn to Earn</p>
                         </div>
                         
@@ -152,15 +157,20 @@ def send_welcome_email(user_email: str, user_name: str):
                                 <li>📊 Track your progress and performance</li>
                             </ul>
                             
-                            <p style="margin: 30px 0;">
+                            <p style="margin: 30px 0; text-align: center;">
                                 <a href="{FRONTEND_URL}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                                     Start Learning Now
                                 </a>
                             </p>
                             
-                            <p style="color: #666; font-size: 14px;">
-                                You started with <strong>50 $READS tokens</strong> as a welcome bonus. Use them wisely!
+                            <p style="color: #666; font-size: 14px; background-color: #f0fdf4; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">
+                                🎁 You started with <strong>50 $READS tokens</strong> as a welcome bonus. Use them wisely!
                             </p>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                            <p>© 2025 READS Technologies. All rights reserved.</p>
                         </div>
                     </div>
                 </body>
@@ -189,68 +199,88 @@ def send_account_deletion_confirmation_email(user_email: str, user_name: str):
     Send a confirmation email when a user deletes their account.
     This serves as a final record and security measure.
     """
-    subject = "Your $READS Account Has Been Deleted"
+    print(f"\n🔄 Attempting to send account deletion email to: {user_email}")
     
-    html_content = f"""
-    <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1a202c;">Account Deletion Confirmed</h2>
-                
-                <p>Hi {user_name},</p>
-                
-                <p>This email confirms that your $READS account has been permanently deleted as you requested.</p>
-                
-                <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>What was deleted:</strong></p>
-                    <ul style="margin: 10px 0;">
-                        <li>Your user profile and account information</li>
-                        <li>All lesson progress and quiz results</li>
-                        <li>Your wallet and token balance</li>
-                        <li>All rewards and transaction history</li>
-                    </ul>
-                </div>
-                
-                <p>If you didn't request this deletion, please contact our support team immediately at <a href="mailto:readstechnologies@gmail.com">readstechnologies@gmail.com</a></p>
-                
-                <p>We're sorry to see you go! If you'd like to share feedback about your experience, we'd love to hear from you.</p>
-                
-                <p>Thank you for being part of the $READS community.</p>
-                
-                <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.9em;">
-                    <strong>The $READS Team</strong><br>
-                    This is an automated message. Please do not reply to this email.
-                </p>
-            </div>
-        </body>
-    </html>
-    """
-    
-    text_content = f"""
-    Account Deletion Confirmed
-    
-    Hi {user_name},
-    
-    This email confirms that your $READS account has been permanently deleted as you requested.
-    
-    What was deleted:
-    - Your user profile and account information
-    - All lesson progress and quiz results
-    - Your wallet and token balance
-    - All rewards and transaction history
-    
-    If you didn't request this deletion, please contact our support team immediately at readstechnologies@gmail.com 
-    
-    We're sorry to see you go! If you'd like to share feedback about your experience, we'd love to hear from you.
-    
-    Thank you for being part of the $READS community.
-    
-    The $READS Team
-    """
+    if not SENDGRID_API_KEY:
+        print(f"⚠️  Deletion email not sent (API key not configured).")
+        return False
     
     try:
-        send_email(user_email, subject, html_content, text_content)
-        print(f"✅ Account deletion confirmation email sent to {user_email}")
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        
+        message = Mail(
+            from_email=Email(SENDGRID_FROM_EMAIL, "READS Team"),
+            to_emails=To(user_email),
+            subject="Your $READS Account Has Been Deleted",
+            html_content=f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                        <!-- Header with Logo -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <img src="{LOGO_URL}" alt="READS Logo" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                            <h1 style="color: #4F46E5; margin: 10px 0;">$READS</h1>
+                            <p style="color: #666; margin: 5px 0;">Learn to Earn</p>
+                        </div>
+                        
+                        <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h2 style="color: #333; margin-top: 0;">Account Deletion Confirmed</h2>
+                            
+                            <p>Hi {user_name},</p>
+                            
+                            <p>This email confirms that your $READS account has been permanently deleted as you requested.</p>
+                            
+                            <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                                <p style="margin: 0; font-weight: bold; color: #2c5282;">What was deleted:</p>
+                                <ul style="margin: 10px 0; color: #4a5568;">
+                                    <li>Your user profile and account information</li>
+                                    <li>All lesson progress and quiz results</li>
+                                    <li>Your wallet and token balance</li>
+                                    <li>All rewards and transaction history</li>
+                                </ul>
+                            </div>
+                            
+                            <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                                <p style="margin: 0; color: #742a2a;">
+                                    <strong>⚠️ Important:</strong> If you didn't request this deletion, please contact our support team immediately at 
+                                    <a href="mailto:readstechnologies@gmail.com" style="color: #c53030;">readstechnologies@gmail.com</a>
+                                </p>
+                            </div>
+                            
+                            <p>We're sorry to see you go! If you'd like to share feedback about your experience, we'd love to hear from you.</p>
+                            
+                            <p>Thank you for being part of the $READS community. We hope to see you again in the future!</p>
+                            
+                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+                            
+                            <p style="color: #718096; font-size: 0.9em; margin: 0;">
+                                <strong>The $READS Team</strong><br>
+                                This is an automated message. Please do not reply to this email.
+                            </p>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                            <p>© 2025 READS Technologies. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            """
+        )
+        
+        print(f"📤 Sending deletion confirmation email via SendGrid...")
+        response = sg.send(message)
+        
+        print(f"✅ Account deletion email sent successfully!")
+        print(f"   Status Code: {response.status_code}")
+        print(f"   To: {user_email}")
+        
+        return True
+        
     except Exception as e:
-        print(f"⚠️ Failed to send deletion confirmation email to {user_email}: {str(e)}")
-        # Don't raise exception - deletion should still succeed even if email fails
+        print(f"❌ Failed to send deletion confirmation email!")
+        print(f"   Error Type: {type(e).__name__}")
+        print(f"   Error Message: {str(e)}")
+        print(f"   To: {user_email}")
+        return False

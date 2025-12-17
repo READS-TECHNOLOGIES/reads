@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Calendar, LogOut, Shield, Trash2, AlertCircle } from 'lucide-react';
-import { api } from '../api'; // Adjust path as needed
+import { api } from '../../services/api';
 
 const ProfileModule = ({ user, onLogout }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);

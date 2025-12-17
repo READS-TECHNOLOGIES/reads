@@ -132,6 +132,22 @@ export const api = {
                 joined: data.created_at,
             };
         },
+        deleteAccount: async () => {
+            const res = await fetch(`${API_URL}/user/delete`, {
+                method: 'DELETE',
+                headers: getAuthHeader()
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Delete Account');
+            }
+
+            // Clear local storage on successful deletion
+            localStorage.removeItem('access_token');
+            
+            const data = await res.json();
+            return data;
+        },
     },
 
     // --- PROFILE ---

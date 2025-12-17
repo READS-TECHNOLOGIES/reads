@@ -415,8 +415,14 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 }
 
                 // 🆕 Navigate to results page with all the data
-                console.log('🟢 Navigating to results page...');
-                onNavigate('learn', 'quiz-results', lessonId, {
+                console.log('🟢 Navigating to results page with data:', {
+                    result: result,
+                    questions: questions,
+                    userAnswers: newAnswers,
+                    lessonTitle: lessonTitle
+                });
+                
+                onNavigate('learn', 'quiz-results', {
                     result: result,
                     questions: questions,
                     userAnswers: newAnswers,

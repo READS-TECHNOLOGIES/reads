@@ -331,7 +331,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         }
     };
 
-    // 🆕 SUBMIT WITH TIME VALIDATION
+    // 🆕 SUBMIT WITH TIME VALIDATION - FIXED VERSION
     const handleSubmit = async () => {
         setStatus('submitting');
         setErrorMessage('');
@@ -364,6 +364,13 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 time_spent_seconds: questionTimes[q.id] || minTimePerQuestion
             }));
 
+            console.log('🔵 About to submit quiz with:', {
+                lessonId,
+                attemptId: quizAttempt.attempt_id,
+                answersCount: formattedAnswers.length,
+                totalTimeSeconds
+            });
+
             // Submit with anti-cheat validation
             const result = await api.learn.submitQuizAttempt(
                 lessonId,
@@ -372,12 +379,21 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 totalTimeSeconds
             );
 
-            // Update wallet
+            console.log('🟢 Quiz submission successful, result:', result);
+
+            // ✅ FIX: Set submission result first
+            setSubmissionResult(result);
+            
+            // Update wallet BEFORE changing status
             if (result.tokens_awarded > 0 && onUpdateWallet) {
-                onUpdateWallet(result.tokens_awarded);
+                try {
+                    await onUpdateWallet(result.tokens_awarded);
+                } catch (walletErr) {
+                    console.warn('Wallet update failed (non-critical):', walletErr);
+                }
             }
 
-            setSubmissionResult(result);
+            // ✅ FIX: Change status to results AFTER everything is ready
             setStatus('results');
 
             // Show warning if flagged
@@ -389,7 +405,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
         } catch (err) {
             const message = err.message || 'An unknown API error occurred during submission.';
-            console.error("Quiz submission failed:", message, err);
+            console.error("🔴 Quiz submission failed:", message, err);
             setErrorMessage(message);
             setStatus('error');
         }
@@ -419,7 +435,11 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         return <RateLimitError status={quizStatus} onNavigate={onNavigate} lessonId={lessonId} />;
     }
 
-    if (status === 'results' && submissionResult) {
+    // ✅ FIX: Better handling of results state
+    if (status === 'results') {
+        if (!submissionResult) {
+            return <LoadingState message="Loading results..." />;
+        }
         return (
             <ResultSummary 
                 result={submissionResult} 

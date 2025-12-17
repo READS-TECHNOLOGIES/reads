@@ -128,17 +128,24 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                             className={`p-3 rounded-lg border-2 ${bgColor} ${borderColor} ${textColor}`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span>{option}</span>
-                                                {isCorrectOption && (
-                                                    <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded">
-                                                        Correct Answer
-                                                    </span>
-                                                )}
-                                                {isUserAnswer && !isCorrect && (
-                                                    <span className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded">
-                                                        Your Answer
-                                                    </span>
-                                                )}
+                                                <span className="flex-1">{option}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {isCorrectOption && (
+                                                        <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                            <CheckCircle size={14} /> Correct Answer
+                                                        </span>
+                                                    )}
+                                                    {isUserAnswer && !isCorrect && (
+                                                        <span className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                            <XCircle size={14} /> Your Answer
+                                                        </span>
+                                                    )}
+                                                    {isUserAnswer && isCorrect && (
+                                                        <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                            <CheckCircle size={14} /> Your Answer ✓
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );

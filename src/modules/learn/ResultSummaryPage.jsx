@@ -111,15 +111,39 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                     let bgColor = 'bg-black/30';
                                     let borderColor = 'border-cyan-light';
                                     let textColor = 'text-gray-200';
+                                    let badges = [];
 
-                                    if (isCorrectOption) {
+                                    // Styling logic
+                                    if (isUserAnswer && isCorrect) {
+                                        // User got it right - show green with "Your Answer ✓"
                                         bgColor = 'bg-green-900/30';
                                         borderColor = 'border-green-500';
                                         textColor = 'text-green-200';
+                                        badges.push(
+                                            <span key="user-correct" className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                <CheckCircle size={14} /> Your Answer ✓
+                                            </span>
+                                        );
                                     } else if (isUserAnswer && !isCorrect) {
+                                        // User selected wrong answer - show red
                                         bgColor = 'bg-red-900/30';
                                         borderColor = 'border-red-500';
                                         textColor = 'text-red-200';
+                                        badges.push(
+                                            <span key="user-wrong" className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                <XCircle size={14} /> Your Answer
+                                            </span>
+                                        );
+                                    } else if (isCorrectOption) {
+                                        // This is the correct answer but user didn't select it
+                                        bgColor = 'bg-green-900/30';
+                                        borderColor = 'border-green-500';
+                                        textColor = 'text-green-200';
+                                        badges.push(
+                                            <span key="correct" className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                <CheckCircle size={14} /> Correct Answer
+                                            </span>
+                                        );
                                     }
 
                                     return (
@@ -130,21 +154,7 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                             <div className="flex items-center justify-between">
                                                 <span className="flex-1">{option}</span>
                                                 <div className="flex items-center gap-2">
-                                                    {isCorrectOption && (
-                                                        <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
-                                                            <CheckCircle size={14} /> Correct Answer
-                                                        </span>
-                                                    )}
-                                                    {isUserAnswer && !isCorrect && (
-                                                        <span className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded flex items-center gap-1">
-                                                            <XCircle size={14} /> Your Answer
-                                                        </span>
-                                                    )}
-                                                    {isUserAnswer && isCorrect && (
-                                                        <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
-                                                            <CheckCircle size={14} /> Your Answer ✓
-                                                        </span>
-                                                    )}
+                                                    {badges}
                                                 </div>
                                             </div>
                                         </div>

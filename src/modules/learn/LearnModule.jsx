@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, ArrowLeft, PlayCircle, Clock, Award, CheckCircle, Trash2, XCircle, RefreshCw, AlertTriangle, Shield } from 'lucide-react';
 import { api } from '../../services/api';
+import ResultSummaryPage from './ResultSummaryPage.jsx'; // 🆕 Import the new component
 
 // ====================================================================
 // --- 0. Helper Components ---
@@ -111,7 +112,7 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
             // Reset for next mount
             isInitializedRef.current = false;
         };
-    }, [lesson?.id]); // ✅ Only depend on lesson.id
+    }, [lesson?.id]);
 
     const safeContent = (lesson.content || 'Content not available.').replace(/\n/g, '<br/>');
 
@@ -227,7 +228,7 @@ const LessonDetailView = ({ lesson, onNavigate }) => {
 };
 
 // ====================================================================
-// --- 2. Quiz View with Anti-Cheat ---
+// --- 2. Quiz View with Anti-Cheat (UPDATED TO NAVIGATE TO RESULTS) ---
 // ====================================================================
 
 const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
@@ -241,7 +242,6 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     const [questionTimes, setQuestionTimes] = useState({});
     const [questionStartTime, setQuestionStartTime] = useState(Date.now());
     const [attemptStartTime, setAttemptStartTime] = useState(null);
-    const [quizResult, setQuizResult] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadError, setLoadError] = useState(null);
     const [quizStatus, setQuizStatus] = useState(null);
@@ -373,7 +373,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             setStep(step + 1);
             setQuestionStartTime(Date.now());
         } else {
-            // Submit quiz
+            // 🆕 Submit quiz and navigate to results page
             setIsLoading(true);
             try {
                 const totalTimeSeconds = Math.floor((Date.now() - attemptStartTime) / 1000);
@@ -394,6 +394,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     time_spent_seconds: questionTimes[q.id] || minTimePerQuestion
                 }));
 
+                console.log('🔵 Submitting quiz...');
                 const result = await api.learn.submitQuizAttempt(
                     lessonId,
                     quizAttempt.attempt_id,
@@ -401,15 +402,29 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     totalTimeSeconds
                 );
 
-                setQuizResult(result);
-                onUpdateWallet(result.tokens_awarded);
+                console.log('🟢 Quiz submission successful:', result);
 
+                // Update wallet
+                if (result.tokens_awarded > 0 && onUpdateWallet) {
+                    await onUpdateWallet(result.tokens_awarded);
+                }
+
+                // Show warning if flagged
                 if (result.flagged_suspicious) {
                     alert(`⚠️ ${result.message || 'Your submission has been flagged for review.'}`);
                 }
 
+                // 🆕 Navigate to results page with all the data
+                console.log('🟢 Navigating to results page...');
+                onNavigate('learn', 'quiz-results', lessonId, {
+                    result: result,
+                    questions: questions,
+                    userAnswers: newAnswers,
+                    lessonTitle: lessonTitle
+                });
+
             } catch (e) {
-                console.error("Quiz submission failed:", e);
+                console.error("🔴 Quiz submission failed:", e);
                 setLoadError(`Submission failed: ${e.message || 'Unknown error'}`);
                 setIsLoading(false);
             }
@@ -457,73 +472,15 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     }
 
     if (isLoading || !questions.length) {
-        const loadingMessage = isLoading && quizResult 
-            ? "Submitting quiz..." 
-            : isLoading && !quizAttempt
+        const loadingMessage = isLoading && !quizAttempt
             ? "Loading quiz..."
             : isLoading && quizAttempt
-            ? "Preparing questions..."
+            ? "Submitting quiz..."
             : "Initializing...";
             
         return (
             <div className="p-8 text-center">
                 <LoadingState message={loadingMessage} />
-                <p className="text-xs text-card-muted mt-4">
-                    Debug: isLoading={String(isLoading)}, questions={questions.length}, 
-                    quizAttempt={quizAttempt ? 'loaded' : 'null'}, loadError={loadError || 'none'}
-                </p>
-            </div>
-        );
-    }
-
-    // Quiz result
-    if (quizResult) {
-        const { score, correct, wrong, tokens_awarded, passed, flagged_suspicious } = quizResult;
-
-        return (
-            <div className="text-center p-8 bg-light-card dark:bg-dark-card rounded-2xl shadow-xl space-y-6 animate-fade-in border-2 border-cyan">
-                <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center border-4 ${passed ? 'bg-green-500/20 border-green-500' : 'bg-red-500/20 border-red-500'}`}>
-                    {passed ? <CheckCircle size={40} className="text-green-500" /> : <XCircle size={40} className="text-red-500" />}
-                </div>
-                <h2 className="text-3xl font-bold text-white">{passed ? "Congratulations!" : "Quiz Failed"}</h2>
-                <p className='text-card-muted'>You scored {score}% for <strong className="text-white">{lessonTitle}</strong></p>
-
-                {flagged_suspicious && (
-                    <div className="bg-yellow-900/20 border border-yellow-500 rounded-lg p-4">
-                        <p className="text-yellow-400 text-sm flex items-center justify-center">
-                            <AlertTriangle size={16} className="mr-2" />
-                            Your submission was flagged for review
-                        </p>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl bg-black/30 border-2 border-cyan-light">
-                        <p className="text-sm text-card-muted">Score</p>
-                        <p className={`text-2xl font-bold ${passed ? 'text-cyan' : 'text-red-500'}`}>{score}%</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-black/30 border-2 border-cyan-light">
-                        <p className="text-sm text-card-muted">Correct</p>
-                        <p className="text-2xl font-bold text-cyan">{correct}</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-black/30 border-2 border-cyan-light">
-                        <p className="text-sm text-card-muted">Tokens</p>
-                        <p className="text-2xl font-bold text-orange">{tokens_awarded}</p>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={() => onNavigate('wallet')} 
-                    className="w-full bg-cyan text-white py-3 rounded-xl font-bold hover:bg-primary-cyan-dark transition-all border-2 border-cyan shadow-lg"
-                >
-                    Check Wallet
-                </button>
-                <button 
-                    onClick={() => onNavigate('learn', 'categories')} 
-                    className="text-card-muted text-sm hover:text-cyan transition-colors"
-                >
-                    Back to Courses
-                </button>
             </div>
         );
     }
@@ -662,7 +619,7 @@ const LessonDataLoader = ({ lessonId, onNavigate }) => {
 };
 
 // ====================================================================
-// --- 4. Main Learn Module ---
+// --- 4. Main Learn Module (UPDATED WITH QUIZ-RESULTS ROUTE) ---
 // ====================================================================
 
 export default function LearnModule({ subView, activeData, onNavigate, onUpdateWallet, isAdmin = false }) {
@@ -809,6 +766,38 @@ export default function LearnModule({ subView, activeData, onNavigate, onUpdateW
     // 4. Quiz View
     if (subView === 'quiz') {
         return <QuizView lessonData={activeData} onNavigate={onNavigate} onUpdateWallet={onUpdateWallet} />;
+    }
+
+    // 🆕 5. Quiz Results View
+    if (subView === 'quiz-results') {
+        console.log('🟢 Rendering quiz results with data:', activeData);
+        
+        if (!activeData || !activeData.result || !activeData.questions || !activeData.userAnswers) {
+            console.error('🔴 Missing required data for results page:', activeData);
+            return (
+                <div className="text-center p-8 bg-red-900/20 border-2 border-red-500 rounded-xl">
+                    <XCircle size={48} className="mx-auto mb-3 text-red-500" />
+                    <h2 className="text-xl font-semibold text-red-400">Error Loading Results</h2>
+                    <p className="text-red-300 mt-2">Quiz result data is missing or incomplete.</p>
+                    <button
+                        onClick={() => onNavigate('learn', 'categories')}
+                        className="mt-4 px-4 py-2 text-sm font-medium text-white bg-cyan rounded-lg hover:bg-primary-cyan-dark transition-all border-2 border-cyan"
+                    >
+                        Back to Categories
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <ResultSummaryPage
+                result={activeData.result}
+                questions={activeData.questions}
+                userAnswers={activeData.userAnswers}
+                lessonTitle={activeData.lessonTitle}
+                onNavigate={onNavigate}
+            />
+        );
     }
 
     // Default Fallback

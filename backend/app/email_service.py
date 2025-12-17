@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@readstechnologies.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://reads-phi.vercel.app")
-LOGO_URL = "https://i.imgur.com/SMSSYph.png"  # Direct Imgur link to your logo
+LOGO_URL = "https://imgur.com/a/03JErUV"  # Imgur link to READS logo
 
 print(f"📧 Email Service Initialized:")
 print(f"   - API Key Present: {'Yes' if SENDGRID_API_KEY else 'NO - EMAIL WILL NOT WORK'}")

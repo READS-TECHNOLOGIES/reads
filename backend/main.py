@@ -272,6 +272,86 @@ def get_user_stats(current_user: models.User = Depends(auth.get_current_user), d
         quizzes_taken=quizzes_taken  
     )
 
+# Delete Account Function 
+
+@app.delete("/user/delete", status_code=status.HTTP_200_OK)
+def delete_user_account(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Delete the current user's account and all associated data.
+    This is a permanent action that cannot be undone.
+    """
+    user_id = current_user.id
+    user_email = current_user.email
+    user_name = current_user.name
+    
+    try:
+        # Delete in correct order to avoid foreign key constraint violations
+        
+        # 1. Delete quiz-related data
+        db.query(models.QuizAttempt).filter(
+            models.QuizAttempt.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        db.query(models.QuizResult).filter(
+            models.QuizResult.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        db.query(models.QuizRateLimit).filter(
+            models.QuizRateLimit.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 2. Delete lesson progress
+        db.query(models.LessonProgress).filter(
+            models.LessonProgress.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 3. Delete rewards
+        db.query(models.Reward).filter(
+            models.Reward.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 4. Delete wallet
+        db.query(models.Wallet).filter(
+            models.Wallet.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 5. Delete password reset tokens
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user_id
+        ).delete(synchronize_session=False)
+        
+        # 6. Finally delete the user
+        db.delete(current_user)
+        
+        # Commit all deletions
+        db.commit()
+        
+        # Optional: Send goodbye email in background
+        background_tasks.add_task(
+            email_service.send_account_deletion_confirmation_email,
+            user_email,
+            user_name
+        )
+        
+        print(f"✅ Account deleted successfully for user {user_id} ({user_email})")
+        
+        return {
+            "message": "Account successfully deleted",
+            "success": True
+        }
+        
+    except Exception as e:
+        # Rollback on any error
+        db.rollback()
+        print(f"❌ Error deleting account for user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete account. Please try again later."
+        )
 @app.get("/leaderboard", response_model=List[schemas.LeaderboardEntry])
 def get_leaderboard(
     limit: int = 10,

@@ -1,173 +1,544 @@
-import React, { useState } from 'react';
-import { User, Mail, Calendar, LogOut, Shield, Trash2, AlertCircle } from 'lucide-react';
-import { api } from '../../services/api';
+import { v4 as uuidv4 } from 'uuid';
 
-const ProfileModule = ({ user, onLogout }) => {
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState('');
-  
-  const formatDate = (isoString) => {
-    if (!isoString) return 'N/A';
-    const date = new Date(isoString);
-    return date.toLocaleDateString();
-  };
+// Vercel routes our /api path to the Python backend function
+const API_URL = "/api"; 
 
-  const handleDeleteAccount = async () => {
-    if (confirmText !== 'DELETE') {
-      setError('Please type DELETE to confirm');
-      return;
+// Function to get the Authorization header
+const getAuthHeader = () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        return { 'Content-Type': 'application/json' };
     }
-
-    setIsDeleting(true);
-    setError('');
-
-    try {
-      await api.auth.deleteAccount();
-      
-      // Account deleted successfully
-      alert('Your account has been permanently deleted.');
-      // Redirect to home or login page
-      window.location.href = '/';
-      
-    } catch (err) {
-      setError(err.message || 'Failed to delete account. Please try again.');
-      console.error('Delete account error:', err);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const CardItem = ({ icon: Icon, label, value }) => (
-    <div className="flex items-center justify-between p-4 bg-primary-navy dark:bg-dark-card rounded-xl border border-cyan/20">
-      <div className="flex items-center gap-3">
-        <Icon size={18} className="text-cyan dark:text-cyan" />
-        <span className="text-card-muted dark:text-card-muted font-medium">{label}</span>
-      </div>
-      <span className="font-semibold text-card-light dark:text-card-light break-all text-right text-sm">{value}</span>
-    </div>
-  );
-
-  return (
-    <>
-      <div className="space-y-6 animate-fade-in">
-        <h2 className="text-3xl font-bold text-primary-navy dark:text-card-light">User Profile</h2>
-        
-        {/* Avatar and Basic Info */}
-        <div className="text-center p-8 bg-primary-navy dark:bg-dark-card rounded-2xl shadow-xl border border-cyan/30">
-          <img 
-              src={user.avatar} 
-              className="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-cyan dark:border-cyan" 
-              alt="Profile" 
-          />
-          <h3 className="text-xl font-bold text-card-light dark:text-card-light">{user.name}</h3>
-          <p className="text-sm text-card-muted">{user.email}</p>
-          
-          {user.is_admin && (
-               <span className="mt-2 inline-flex items-center gap-1 bg-orange/20 text-orange text-xs font-medium px-3 py-1 rounded-full border border-orange">
-                  <Shield size={12} /> Administrator
-              </span>
-          )}
-        </div>
-
-        {/* Account Details */}
-        <div className="space-y-3">
-          <h3 className="text-xl font-bold text-primary-navy dark:text-card-light border-b border-cyan/30 pb-2">Account Details</h3>
-          
-          <CardItem icon={User} label="User ID" value={user.id} />
-          
-          <CardItem icon={Mail} label="Email" value={user.email} />
-          
-          <CardItem 
-            icon={Calendar} 
-            label="Member Since" 
-            value={formatDate(user.joined)} 
-          />
-        </div>
-          
-        {/* Action Buttons */}
-        <div className="pt-4 space-y-3">
-          <button 
-            onClick={onLogout}
-            className="w-full py-3 rounded-xl bg-orange text-white font-bold hover:bg-orange-light transition-colors flex items-center justify-center gap-2 shadow-lg"
-          >
-            <LogOut size={18} /> Log Out
-          </button>
-
-          <button 
-            onClick={() => setShowDeleteModal(true)}
-            className="w-full py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
-          >
-            <Trash2 size={18} /> Delete Account
-          </button>
-        </div>
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-dark-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-cyan/30">
-            <div className="flex items-start gap-3 mb-4">
-              <AlertCircle className="text-red-600 flex-shrink-0 mt-1" size={24} />
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-card-light mb-2">
-                  Delete Account
-                </h2>
-                <p className="text-gray-600 dark:text-card-muted text-sm">
-                  This action cannot be undone. This will permanently delete your account and remove all of your data from our servers.
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-card-muted mb-2">
-                Type <span className="font-bold text-red-600">DELETE</span> to confirm:
-              </label>
-              <input
-                type="text"
-                value={confirmText}
-                onChange={(e) => {
-                  setConfirmText(e.target.value);
-                  setError('');
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-cyan/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-primary-navy text-gray-900 dark:text-card-light"
-                placeholder="DELETE"
-                disabled={isDeleting}
-              />
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setConfirmText('');
-                  setError('');
-                }}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 dark:border-cyan/30 text-gray-700 dark:text-card-light rounded-lg hover:bg-gray-50 dark:hover:bg-primary-navy transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={isDeleting || confirmText !== 'DELETE'}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Account'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+    return { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
 };
 
-export default ProfileModule;
+// Helper function to process failed responses aggressively
+const handleFailedResponse = async (res, action) => {
+    let errorDetail = `Failed to ${action} (Status: ${res.status})`;
+
+    if (res.status === 401) {
+        localStorage.removeItem('access_token');
+        throw new Error('AuthenticationRequired');
+    }
+
+    if (res.status === 409) {
+        throw new Error('QuizAlreadyCompleted');
+    }
+
+    // 🆕 Handle rate limit errors
+    if (res.status === 429) {
+        try {
+            const data = await res.json();
+            throw new Error(data.detail || 'Rate limit exceeded');
+        } catch (e) {
+            throw new Error('Rate limit exceeded. Please try again later.');
+        }
+    }
+
+    try {
+        const data = await res.json();
+        errorDetail = data.detail || errorDetail;
+    } catch (e) {
+        const text = await res.text();
+        errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`; 
+    }
+
+    console.error(`${action} Failed: ${errorDetail}`); 
+    throw new Error(errorDetail);
+}
+
+export const api = {
+    // --- AUTH ---
+    auth: {
+        login: async (email, password) => {
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Login');
+            }
+
+            const data = await res.json();
+            localStorage.setItem('access_token', data.access_token);
+            return data; 
+        },
+        signup: async (name, email, password) => {
+            const res = await fetch(`${API_URL}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Signup');
+            }
+
+            const data = await res.json();
+            localStorage.setItem('access_token', data.access_token);
+            return data;
+        },
+        forgotPassword: async (email) => {
+            const res = await fetch(`${API_URL}/auth/request-password-reset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Send Password Reset Email');
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        resetPassword: async (token, newPassword) => {
+            const res = await fetch(`${API_URL}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword })
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Reset Password');
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        me: async () => {
+            const token = localStorage.getItem('access_token');
+            if (!token) return null;
+
+            const res = await fetch(`${API_URL}/user/profile`, { headers: getAuthHeader() });
+
+            if (!res.ok) {
+                return null;
+            }
+
+            const data = await res.json();
+            return {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                is_admin: data.is_admin,
+                cardano_address: data.cardano_address,
+                avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${data.name}`, 
+                joined: data.created_at,
+            };
+        },
+        deleteAccount: async () => {
+            const res = await fetch(`${API_URL}/user/delete`, {
+                method: 'DELETE',
+                headers: getAuthHeader()
+            });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Delete Account');
+            }
+
+            // Clear local storage on successful deletion
+            localStorage.removeItem('access_token');
+            
+            const data = await res.json();
+            return data;
+        },
+    },
+
+    // --- PROFILE ---
+    profile: {
+        getStats: async () => {
+            const res = await fetch(`${API_URL}/user/stats`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch User Stats');
+                } catch (e) {
+                    console.error("Non-fatal error fetching user stats:", e.message);
+                }
+                return { lessons_completed: 0, quizzes_taken: 0 };
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        getLeaderboard: async (limit = 10) => {
+            const res = await fetch(`${API_URL}/leaderboard?limit=${limit}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Leaderboard');
+                } catch (e) {
+                    console.error("Non-fatal error fetching leaderboard:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data;
+        },
+    },
+
+    // --- LEARN ---
+    learn: {
+        getCategories: async () => {
+            const res = await fetch(`${API_URL}/lessons/categories`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Categories');
+                } catch (e) {
+                    console.error("Non-fatal error fetching categories:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data.map(cat => ({
+                id: cat.category.toLowerCase(), 
+                name: cat.category, 
+                count: cat.count,
+                color: cat.category === 'JAMB' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+            }));
+        },
+        getLessons: async (categoryName) => {
+            const res = await fetch(`${API_URL}/lessons/category/${categoryName}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Lessons');
+                } catch (e) {
+                    console.error("Non-fatal error fetching lessons:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data.map(l => ({
+                ...l,
+                duration: '15 min'
+            }));
+        },
+        getLessonDetail: async (lessonId) => {
+            const res = await fetch(`${API_URL}/lessons/${lessonId}`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Lesson Detail');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Track lesson read time
+        trackLessonTime: async (lessonId, readTimeSeconds) => {
+            const res = await fetch(`${API_URL}/lessons/${lessonId}/track-time`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    lesson_id: lessonId, 
+                    read_time_seconds: readTimeSeconds 
+                })
+            });
+            
+            if (!res.ok) {
+                console.warn('Failed to track lesson time (non-fatal)');
+            }
+            
+            return res.ok;
+        },
+
+        // 🆕 ANTI-CHEAT: Check if user can take quiz
+        checkQuizStatus: async (lessonId) => {
+            const res = await fetch(`${API_URL}/quiz/${lessonId}/status`, {
+                headers: getAuthHeader()
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Check Quiz Status');
+            }
+            
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Start new quiz attempt with random questions
+        startQuizAttempt: async (lessonId) => {
+            const res = await fetch(`${API_URL}/quiz/start`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ lesson_id: lessonId })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Start Quiz Attempt');
+            }
+            
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Submit quiz with timing validation
+        submitQuizAttempt: async (lessonId, attemptId, answers, totalTimeSeconds) => {
+            console.log('🔵 submitQuizAttempt called with:', { 
+                lessonId, 
+                attemptId, 
+                answers, 
+                totalTimeSeconds 
+            });
+            
+            try {
+                const res = await fetch(`${API_URL}/quiz/submit`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ 
+                        lesson_id: lessonId, 
+                        attempt_id: attemptId,
+                        answers: answers,
+                        total_time_seconds: totalTimeSeconds
+                    })
+                });
+
+                console.log('🔵 Quiz submit response status:', res.status);
+
+                if (!res.ok) {
+                    console.log('🔴 Response not OK, handling error...');
+                    await handleFailedResponse(res, 'Submit Quiz');
+                }
+
+                const data = await res.json();
+                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
+                return data;
+                
+            } catch (error) {
+                console.error('🔴 Quiz submit FAILED with error:', error);
+                throw error;
+            }
+        },
+
+        // Keep old methods for backward compatibility (DEPRECATED)
+        getQuizQuestions: async (lessonId) => {
+            console.warn('⚠️ getQuizQuestions is deprecated. Use startQuizAttempt instead.');
+            const res = await fetch(`${API_URL}/lessons/${lessonId}/quiz`, { headers: getAuthHeader() });
+
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Quiz Questions'); 
+            }
+
+            return res.json();
+        },
+        submitQuiz: async (lessonId, answers) => {
+            console.warn('⚠️ submitQuiz is deprecated. Use submitQuizAttempt instead.');
+            console.log('🔵 submitQuiz called with:', { lessonId, answers });
+            
+            try {
+                const res = await fetch(`${API_URL}/quiz/submit`, {
+                    method: 'POST',
+                    headers: getAuthHeader(),
+                    body: JSON.stringify({ lesson_id: lessonId, answers })
+                });
+
+                console.log('🔵 Quiz submit response status:', res.status);
+
+                if (!res.ok) {
+                    console.log('🔴 Response not OK, handling error...');
+                    await handleFailedResponse(res, 'Submit Quiz');
+                }
+
+                const data = await res.json();
+                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
+                return data;
+                
+            } catch (error) {
+                console.error('🔴 Quiz submit FAILED with error:', error);
+                throw error;
+            }
+        }
+    },
+
+    // --- WALLET ---
+    wallet: {
+        getBalance: async () => {
+            const res = await fetch(`${API_URL}/wallet/balance`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Wallet Balance');
+                } catch (e) {
+                    console.error("Non-fatal error fetching balance:", e.message);
+                }
+                return 0;
+            }
+            const data = await res.json();
+            return data.token_balance;
+        },
+        getHistory: async () => {
+            const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                try {
+                    await handleFailedResponse(res, 'Fetch Wallet History');
+                } catch (e) {
+                    console.error("Non-fatal error fetching wallet history:", e.message);
+                }
+                return [];
+            }
+
+            const data = await res.json();
+            return data;
+        }
+    },
+
+    // --- ADMIN ---
+    admin: {
+        getUsers: async () => {
+            const res = await fetch(`${API_URL}/admin/users`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch All Users (Admin)');
+            }
+            return res.json();
+        },
+
+        promoteUser: async (userId, isAdmin) => {
+            const res = await fetch(`${API_URL}/admin/users/${userId}/promote?is_admin=${isAdmin}`, {
+                method: 'PUT',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, isAdmin ? 'Promote User' : 'Demote User');
+            }
+            return res.json();
+        },
+
+        createLesson: async (lessonData) => {
+            const res = await fetch(`${API_URL}/admin/lessons`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(lessonData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Lesson');
+            }
+            return res.json();
+        },
+
+        deleteLesson: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/lessons/${lessonId}`, {
+                method: 'DELETE',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, `Delete Lesson ID ${lessonId}`);
+            }
+            return {};
+        },
+
+        uploadQuiz: async (lessonId, questions) => {
+            const quizRequest = { lesson_id: lessonId, questions };
+
+            const res = await fetch(`${API_URL}/admin/quiz`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(quizRequest)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Upload Quiz Questions');
+            }
+            return res.json();
+        },
+
+        deleteQuiz: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/quiz/${lessonId}`, {
+                method: 'DELETE',
+                headers: getAuthHeader(),
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, `Delete Quiz for Lesson ID ${lessonId}`);
+            }
+            return {};
+        },
+
+        getAllLessons: async () => {
+            const res = await fetch(`${API_URL}/admin/lessons`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch All Lessons');
+            }
+            return res.json();
+        },
+
+        createQuiz: async (quizData) => {
+            const res = await fetch(`${API_URL}/admin/quiz`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(quizData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Quiz');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: Quiz Configuration Management
+        createQuizConfig: async (configData) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(configData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Create Quiz Config');
+            }
+            return res.json();
+        },
+
+        updateQuizConfig: async (lessonId, configData) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config/${lessonId}`, {
+                method: 'PUT',
+                headers: getAuthHeader(),
+                body: JSON.stringify(configData)
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Update Quiz Config');
+            }
+            return res.json();
+        },
+
+        getQuizConfig: async (lessonId) => {
+            const res = await fetch(`${API_URL}/admin/quiz/config/${lessonId}`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Get Quiz Config');
+            }
+            return res.json();
+        },
+
+        // 🆕 ANTI-CHEAT: View suspicious attempts
+        getSuspiciousAttempts: async (limit = 50) => {
+            const res = await fetch(`${API_URL}/admin/suspicious-attempts?limit=${limit}`, {
+                headers: getAuthHeader()
+            });
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Fetch Suspicious Attempts');
+            }
+            return res.json();
+        },
+    }
+};
+
+// 🟢 Add fetchProtectedData export for WalletModule compatibility
+export const fetchProtectedData = async (endpoint, token, options = {}) => {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+        method: options.method || 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    if (!res.ok) {
+        await handleFailedResponse(res, `Fetch ${endpoint}`);
+    }
+
+    return res.json();
+};

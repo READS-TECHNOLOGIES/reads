@@ -638,3 +638,4 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
                         </tbody>
                     </table>
 </div>
+)

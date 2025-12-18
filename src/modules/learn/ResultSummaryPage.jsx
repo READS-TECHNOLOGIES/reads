@@ -104,43 +104,42 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
 
                             <div className="space-y-2">
                                 {q.options.map(option => {
-                                    const optionKey = option.split('. ')[0];
+                                    const optionKey = option.split('. ')[0]; // Extract "A", "B", "C", "D"
                                     const isUserAnswer = userAnswer === optionKey;
                                     const isCorrectOption = correctAnswer === optionKey;
 
                                     let bgColor = 'bg-black/30';
                                     let borderColor = 'border-cyan-light';
                                     let textColor = 'text-gray-200';
-                                    let badges = [];
+                                    let badge = null;
 
-                                    // Styling logic
-                                    if (isUserAnswer && isCorrect) {
-                                        // User got it right - show green with "Your Answer ✓"
+                                    if (isCorrect && isUserAnswer) {
+                                        // ✅ User answered correctly - show single green badge
                                         bgColor = 'bg-green-900/30';
                                         borderColor = 'border-green-500';
                                         textColor = 'text-green-200';
-                                        badges.push(
-                                            <span key="user-correct" className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                        badge = (
+                                            <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
                                                 <CheckCircle size={14} /> Your Answer ✓
                                             </span>
                                         );
-                                    } else if (isUserAnswer && !isCorrect) {
-                                        // User selected wrong answer - show red
+                                    } else if (!isCorrect && isUserAnswer) {
+                                        // ❌ User answered wrong - show red badge
                                         bgColor = 'bg-red-900/30';
                                         borderColor = 'border-red-500';
                                         textColor = 'text-red-200';
-                                        badges.push(
-                                            <span key="user-wrong" className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded flex items-center gap-1">
-                                                <XCircle size={14} /> Your Answer
+                                        badge = (
+                                            <span className="text-xs font-semibold bg-red-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                                <XCircle size={14} /> Your Answer ✗
                                             </span>
                                         );
-                                    } else if (isCorrectOption) {
-                                        // This is the correct answer but user didn't select it
+                                    } else if (!isCorrect && isCorrectOption) {
+                                        // ✅ Show the correct answer when user was wrong
                                         bgColor = 'bg-green-900/30';
                                         borderColor = 'border-green-500';
                                         textColor = 'text-green-200';
-                                        badges.push(
-                                            <span key="correct" className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
+                                        badge = (
+                                            <span className="text-xs font-semibold bg-green-500 text-white px-2 py-1 rounded flex items-center gap-1">
                                                 <CheckCircle size={14} /> Correct Answer
                                             </span>
                                         );
@@ -149,13 +148,15 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                     return (
                                         <div
                                             key={option}
-                                            className={`p-3 rounded-lg border-2 ${bgColor} ${borderColor} ${textColor}`}
+                                            className={`p-3 rounded-lg border-2 ${bgColor} ${borderColor} ${textColor} transition-all`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="flex-1">{option}</span>
-                                                <div className="flex items-center gap-2">
-                                                    {badges}
-                                                </div>
+                                                <span className="flex-1 font-medium">{option}</span>
+                                                {badge && (
+                                                    <div className="flex items-center gap-2">
+                                                        {badge}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -168,8 +169,9 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
 
             <button 
                 onClick={() => onNavigate('learn', 'categories')}
-                className="w-full px-4 py-3 bg-cyan text-white rounded-xl hover:bg-primary-cyan-dark transition font-semibold border-2 border-cyan shadow-lg"
+                className="w-full px-4 py-3 bg-cyan text-white rounded-xl hover:bg-primary-cyan-dark transition font-semibold border-2 border-cyan shadow-lg hover:shadow-cyan/50 flex items-center justify-center gap-2"
             >
+                <ArrowLeft size={20} />
                 Continue Learning
             </button>
         </div>

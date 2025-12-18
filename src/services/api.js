@@ -521,6 +521,136 @@ export const api = {
             }
             return res.json();
         },
+
+        // --- 🤖 AI CONTENT ASSISTANT (Admin Only) ---
+        
+        /**
+         * Generate lesson content from a topic/subject
+         * @param {Object} params - Generation parameters
+         * @param {string} params.topic - The topic or subject to generate content about
+         * @param {string} params.category - The category for the lesson (e.g., "JAMB", "General")
+         * @param {string} params.difficulty - Difficulty level (e.g., "beginner", "intermediate", "advanced")
+         * @param {number} params.target_length - Approximate word count for the content
+         * @returns {Promise<Object>} Generated lesson content with title, content, and metadata
+         */
+        aiGenerateLessonContent: async ({ topic, category, difficulty = 'intermediate', target_length = 1000 }) => {
+            const res = await fetch(`${API_URL}/admin/ai/generate-lesson`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    topic, 
+                    category, 
+                    difficulty, 
+                    target_length 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Generate Lesson Content');
+            }
+            
+            return res.json();
+        },
+
+        /**
+         * Create quiz questions automatically from lesson text
+         * @param {Object} params - Quiz generation parameters
+         * @param {string} params.lesson_content - The lesson text to generate quiz from
+         * @param {number} params.num_questions - Number of questions to generate (default: 10)
+         * @param {string} params.difficulty - Difficulty level for questions
+         * @returns {Promise<Object>} Generated quiz questions with answers
+         */
+        aiGenerateQuizQuestions: async ({ lesson_content, num_questions = 10, difficulty = 'intermediate' }) => {
+            const res = await fetch(`${API_URL}/admin/ai/generate-quiz`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    lesson_content, 
+                    num_questions, 
+                    difficulty 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Generate Quiz Questions');
+            }
+            
+            return res.json();
+        },
+
+        /**
+         * Improve or expand existing content
+         * @param {Object} params - Improvement parameters
+         * @param {string} params.content - The content to improve/expand
+         * @param {string} params.instruction - Specific instruction (e.g., "make it more detailed", "simplify", "add examples")
+         * @returns {Promise<Object>} Improved content with explanation of changes
+         */
+        aiImproveContent: async ({ content, instruction }) => {
+            const res = await fetch(`${API_URL}/admin/ai/improve-content`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    content, 
+                    instruction 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Improve Content');
+            }
+            
+            return res.json();
+        },
+
+        /**
+         * Suggest related topics based on current content
+         * @param {Object} params - Topic suggestion parameters
+         * @param {string} params.topic - The current topic
+         * @param {string} params.category - The category context
+         * @param {number} params.num_suggestions - Number of suggestions to generate (default: 5)
+         * @returns {Promise<Object>} List of related topics with brief descriptions
+         */
+        aiSuggestRelatedTopics: async ({ topic, category, num_suggestions = 5 }) => {
+            const res = await fetch(`${API_URL}/admin/ai/suggest-topics`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    topic, 
+                    category, 
+                    num_suggestions 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Suggest Related Topics');
+            }
+            
+            return res.json();
+        },
+
+        /**
+         * Quality check content for errors (grammar, factual accuracy, clarity)
+         * @param {Object} params - Quality check parameters
+         * @param {string} params.content - The content to check
+         * @param {string} params.content_type - Type of content ("lesson" or "quiz")
+         * @returns {Promise<Object>} Quality report with suggestions and corrections
+         */
+        aiQualityCheckContent: async ({ content, content_type = 'lesson' }) => {
+            const res = await fetch(`${API_URL}/admin/ai/quality-check`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    content, 
+                    content_type 
+                })
+            });
+            
+            if (!res.ok) {
+                await handleFailedResponse(res, 'Quality Check Content');
+            }
+            
+            return res.json();
+        },
     }
 };
 

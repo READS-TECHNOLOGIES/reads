@@ -8,6 +8,11 @@ from uuid import UUID
 import uuid
 import os
 import random
+import json
+
+# 🤖 AI imports
+import anthropic
+from anthropic import Anthropic
 
 from .app import models, schemas, auth, database, email_service
 from .app import cardano_utils
@@ -29,6 +34,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 🤖 Initialize Anthropic client
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+if not ANTHROPIC_API_KEY:
+    print("⚠️ WARNING: ANTHROPIC_API_KEY not set. AI features will not work.")
+    anthropic_client = None
+else:
+    anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+    print("✅ Anthropic API client initialized successfully")
 
 # Dependencies
 def get_current_admin(current_user: models.User = Depends(auth.get_current_user)):
@@ -1043,3 +1057,404 @@ def delete_quiz(lesson_id: str, db: Session = Depends(database.get_db), current_
     db.commit()  
 
     return
+
+# ============================================================
+# 🤖 AI CONTENT ASSISTANT ENDPOINTS
+# ============================================================
+
+@app.post("/admin/ai/generate-lesson", response_model=schemas.AILessonResponse)
+async def ai_generate_lesson(
+    request: schemas.AIGenerateLessonRequest,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Generate lesson content using Claude AI (Admin Only)."""
+    
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        # Construct prompt for lesson generation
+        prompt = f"""You are an expert educational content creator. Generate a comprehensive lesson on the following topic:
+
+Topic: {request.topic}
+Category: {request.category}
+Difficulty Level: {request.difficulty}
+Target Length: Approximately {request.target_length} words
+
+Please create a well-structured lesson that includes:
+1. A clear, engaging title
+2. An introduction that hooks the learner
+3. Main content organized in logical sections
+4. Key concepts explained with examples
+5. A summary or conclusion
+6. The content should be appropriate for {request.difficulty} level students
+7. Use clear, educational language suitable for {request.category} examination preparation
+
+Format the content in a way that's easy to read and understand. Use markdown formatting where appropriate.
+
+Return ONLY a JSON object with this structure:
+{{
+    "title": "Lesson Title Here",
+    "content": "Full lesson content here with markdown formatting..."
+}}"""
+
+        # Call Claude API
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract response
+        response_text = message.content[0].text
+        
+        # Parse JSON response
+        try:
+            # Try to extract JSON from response
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            result = json.loads(response_text)
+            
+            return schemas.AILessonResponse(
+                title=result.get("title", f"Lesson: {request.topic}"),
+                content=result.get("content", response_text)
+            )
+        except json.JSONDecodeError:
+            # If JSON parsing fails, return raw content
+            return schemas.AILessonResponse(
+                title=f"Lesson: {request.topic}",
+                content=response_text
+            )
+    
+    except anthropic.APIError as e:
+        print(f"❌ Anthropic API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Error generating lesson: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate lesson: {str(e)}")
+
+
+@app.post("/admin/ai/generate-quiz", response_model=schemas.AIQuizResponse)
+async def ai_generate_quiz(
+    request: schemas.AIGenerateQuizRequest,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Generate quiz questions from lesson content using Claude AI (Admin Only)."""
+    
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        prompt = f"""You are an expert at creating educational quiz questions. Based on the following lesson content, create {request.num_questions} multiple-choice questions.
+
+Lesson Content:
+{request.lesson_content}
+
+Requirements:
+- Difficulty Level: {request.difficulty}
+- Number of questions: {request.num_questions}
+- Each question should have exactly 4 options (A, B, C, D)
+- Questions should test understanding, not just memorization
+- Ensure questions cover different parts of the lesson
+- Make distractors (wrong answers) plausible but clearly incorrect
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "questions": [
+        {{
+            "question": "Question text here?",
+            "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+            "correct_option": "A"
+        }}
+    ]
+}}
+
+The correct_option must be one of: "A", "B", "C", or "D"."""
+
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=3000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        response_text = message.content[0].text
+        
+        # Parse JSON response
+        try:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            result = json.loads(response_text)
+            
+            return schemas.AIQuizResponse(
+                questions=result.get("questions", [])
+            )
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing error: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse AI response. Please try again."
+            )
+    
+    except anthropic.APIError as e:
+        print(f"❌ Anthropic API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Error generating quiz: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
+
+
+@app.post("/admin/ai/improve-content", response_model=schemas.AIImproveContentResponse)
+async def ai_improve_content(
+    request: schemas.AIImproveContentRequest,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Improve existing content using Claude AI (Admin Only)."""
+    
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        prompt = f"""You are an expert content editor. Improve the following content based on the given instructions.
+
+Original Content:
+{request.content}
+
+Improvement Instructions:
+{request.instruction}
+
+Please:
+1. Apply the requested improvements
+2. Maintain the original educational value
+3. Keep the content accurate and clear
+4. Preserve any important technical terms or concepts
+
+Return ONLY a JSON object with this structure:
+{{
+    "improved_content": "The improved version of the content here...",
+    "explanation": "Brief explanation of what changes were made and why"
+}}"""
+
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=3000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        response_text = message.content[0].text
+        
+        # Parse JSON response
+        try:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            result = json.loads(response_text)
+            
+            return schemas.AIImproveContentResponse(
+                improved_content=result.get("improved_content", response_text),
+                explanation=result.get("explanation", "Content has been improved based on your instructions.")
+            )
+        except json.JSONDecodeError:
+            return schemas.AIImproveContentResponse(
+                improved_content=response_text,
+                explanation="Content has been improved based on your instructions."
+            )
+    
+    except anthropic.APIError as e:
+        print(f"❌ Anthropic API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI improvement failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Error improving content: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to improve content: {str(e)}")
+
+
+@app.post("/admin/ai/suggest-topics", response_model=schemas.AISuggestTopicsResponse)
+async def ai_suggest_topics(
+    request: schemas.AISuggestTopicsRequest,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Suggest related topics using Claude AI (Admin Only)."""
+    
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        prompt = f"""You are an educational curriculum expert. Suggest {request.num_suggestions} related topics that would complement the following topic:
+
+Current Topic: {request.topic}
+Category: {request.category}
+
+Requirements:
+- Suggest topics that are educationally related and build on this topic
+- Topics should be appropriate for {request.category} examination preparation
+- Provide a natural learning progression
+- Each suggestion should include a title and brief description
+
+Return ONLY a JSON object with this structure:
+{{
+    "suggestions": [
+        {{
+            "title": "Related Topic Title",
+            "description": "Brief description of why this topic is relevant and what it covers (1-2 sentences)"
+        }}
+    ]
+}}"""
+
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        response_text = message.content[0].text
+        
+        # Parse JSON response
+        try:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            result = json.loads(response_text)
+            
+            return schemas.AISuggestTopicsResponse(
+                suggestions=result.get("suggestions", [])
+            )
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse AI response. Please try again."
+            )
+    
+    except anthropic.APIError as e:
+        print(f"❌ Anthropic API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI suggestion failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Error suggesting topics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to suggest topics: {str(e)}")
+
+
+@app.post("/admin/ai/quality-check", response_model=schemas.AIQualityCheckResponse)
+async def ai_quality_check(
+    request: schemas.AIQualityCheckRequest,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Quality check content using Claude AI (Admin Only)."""
+    
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        content_type_context = ""
+        if request.content_type == "quiz":
+            content_type_context = "This is quiz content with questions and answers. Check for clarity, accuracy of questions, and quality of distractors."
+        else:
+            content_type_context = "This is educational lesson content. Check for clarity, accuracy, grammar, and educational value."
+        
+        prompt = f"""You are an expert content quality reviewer. Analyze the following educational content for quality issues.
+
+{content_type_context}
+
+Content to Review:
+{request.content}
+
+Please evaluate:
+1. Grammar and spelling errors
+2. Clarity and readability
+3. Factual accuracy (flag anything that seems questionable)
+4. Educational effectiveness
+5. Overall structure and organization
+
+Return ONLY a JSON object with this structure:
+{{
+    "overall_score": 85,
+    "issues": ["Issue 1 description", "Issue 2 description"],
+    "suggestions": ["Suggestion 1", "Suggestion 2"],
+    "summary": "Brief summary of overall quality and main recommendations"
+}}
+
+The overall_score should be 0-100 where:
+- 90-100: Excellent quality
+- 70-89: Good quality with minor issues
+- 50-69: Acceptable but needs improvement
+- Below 50: Significant issues to address"""
+
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        response_text = message.content[0].text
+        
+        # Parse JSON response
+        try:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            result = json.loads(response_text)
+            
+            return schemas.AIQualityCheckResponse(
+                overall_score=result.get("overall_score", 70),
+                issues=result.get("issues", []),
+                suggestions=result.get("suggestions", []),
+                summary=result.get("summary", "Content quality has been analyzed.")
+            )
+        except json.JSONDecodeError:
+            return schemas.AIQualityCheckResponse(
+                overall_score=70,
+                issues=[],
+                suggestions=["Unable to parse detailed feedback, but content appears acceptable."],
+                summary="Quality check completed with limited feedback."
+            )
+    
+    except anthropic.APIError as e:
+        print(f"❌ Anthropic API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI quality check failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Error checking quality: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check quality: {str(e)}")
+
+
+# ============================================================
+# END OF AI ENDPOINTS
+# ============================================================

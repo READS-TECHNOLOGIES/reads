@@ -10,9 +10,8 @@ import os
 import random
 import json
 
-# 🤖 AI imports
-import anthropic
-from anthropic import Anthropic
+# 🤖 Google Gemini imports
+import google.generativeai as genai
 
 from .app import models, schemas, auth, database, email_service
 from .app import cardano_utils
@@ -35,14 +34,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🤖 Initialize Anthropic client
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-if not ANTHROPIC_API_KEY:
-    print("⚠️ WARNING: ANTHROPIC_API_KEY not set. AI features will not work.")
-    anthropic_client = None
+# 🤖 Initialize Google Gemini client
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    print("⚠️ WARNING: GOOGLE_API_KEY not set. AI features will not work.")
+    gemini_model = None
 else:
-    anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
-    print("✅ Anthropic API client initialized successfully")
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        print("✅ Google Gemini API client initialized successfully (gemini-2.0-flash-exp)")
+    except Exception as e:
+        print(f"❌ Failed to initialize Gemini: {e}")
+        gemini_model = None
 
 # Dependencies
 def get_current_admin(current_user: models.User = Depends(auth.get_current_user)):
@@ -1059,7 +1063,7 @@ def delete_quiz(lesson_id: str, db: Session = Depends(database.get_db), current_
     return
 
 # ============================================================
-# 🤖 AI CONTENT ASSISTANT ENDPOINTS
+# 🤖 AI CONTENT ASSISTANT ENDPOINTS (Google Gemini)
 # ============================================================
 
 @app.post("/admin/ai/generate-lesson", response_model=schemas.AILessonResponse)
@@ -1068,12 +1072,12 @@ async def ai_generate_lesson(
     db: Session = Depends(database.get_db),
     current_admin: models.User = Depends(get_current_admin)
 ):
-    """Generate lesson content using Claude AI (Admin Only)."""
+    """Generate lesson content using Google Gemini AI (Admin Only)."""
     
-    if not anthropic_client:
+    if not gemini_model:
         raise HTTPException(
             status_code=503,
-            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
         )
     
     try:
@@ -1102,17 +1106,9 @@ Return ONLY a JSON object with this structure:
     "content": "Full lesson content here with markdown formatting..."
 }}"""
 
-        # Call Claude API
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        # Extract response
-        response_text = message.content[0].text
+        # Call Gemini API
+        response = gemini_model.generate_content(prompt)
+        response_text = response.text
         
         # Parse JSON response
         try:
@@ -1135,12 +1131,9 @@ Return ONLY a JSON object with this structure:
                 content=response_text
             )
     
-    except anthropic.APIError as e:
-        print(f"❌ Anthropic API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Error generating lesson: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate lesson: {str(e)}")
+        print(f"❌ Gemini API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 
 @app.post("/admin/ai/generate-quiz", response_model=schemas.AIQuizResponse)
@@ -1149,12 +1142,12 @@ async def ai_generate_quiz(
     db: Session = Depends(database.get_db),
     current_admin: models.User = Depends(get_current_admin)
 ):
-    """Generate quiz questions from lesson content using Claude AI (Admin Only)."""
+    """Generate quiz questions from lesson content using Google Gemini AI (Admin Only)."""
     
-    if not anthropic_client:
+    if not gemini_model:
         raise HTTPException(
             status_code=503,
-            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
         )
     
     try:
@@ -1184,15 +1177,8 @@ Return ONLY a JSON object with this exact structure:
 
 The correct_option must be one of: "A", "B", "C", or "D"."""
 
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=3000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        response_text = message.content[0].text
+        response = gemini_model.generate_content(prompt)
+        response_text = response.text
         
         # Parse JSON response
         try:
@@ -1213,12 +1199,9 @@ The correct_option must be one of: "A", "B", "C", or "D"."""
                 detail="Failed to parse AI response. Please try again."
             )
     
-    except anthropic.APIError as e:
-        print(f"❌ Anthropic API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Error generating quiz: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
+        print(f"❌ Gemini API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 
 @app.post("/admin/ai/improve-content", response_model=schemas.AIImproveContentResponse)
@@ -1227,12 +1210,12 @@ async def ai_improve_content(
     db: Session = Depends(database.get_db),
     current_admin: models.User = Depends(get_current_admin)
 ):
-    """Improve existing content using Claude AI (Admin Only)."""
+    """Improve existing content using Google Gemini AI (Admin Only)."""
     
-    if not anthropic_client:
+    if not gemini_model:
         raise HTTPException(
             status_code=503,
-            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
         )
     
     try:
@@ -1256,15 +1239,8 @@ Return ONLY a JSON object with this structure:
     "explanation": "Brief explanation of what changes were made and why"
 }}"""
 
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=3000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        response_text = message.content[0].text
+        response = gemini_model.generate_content(prompt)
+        response_text = response.text
         
         # Parse JSON response
         try:
@@ -1285,12 +1261,9 @@ Return ONLY a JSON object with this structure:
                 explanation="Content has been improved based on your instructions."
             )
     
-    except anthropic.APIError as e:
-        print(f"❌ Anthropic API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI improvement failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Error improving content: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to improve content: {str(e)}")
+        print(f"❌ Gemini API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI improvement failed: {str(e)}")
 
 
 @app.post("/admin/ai/suggest-topics", response_model=schemas.AISuggestTopicsResponse)
@@ -1299,12 +1272,12 @@ async def ai_suggest_topics(
     db: Session = Depends(database.get_db),
     current_admin: models.User = Depends(get_current_admin)
 ):
-    """Suggest related topics using Claude AI (Admin Only)."""
+    """Suggest related topics using Google Gemini AI (Admin Only)."""
     
-    if not anthropic_client:
+    if not gemini_model:
         raise HTTPException(
             status_code=503,
-            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
         )
     
     try:
@@ -1329,15 +1302,8 @@ Return ONLY a JSON object with this structure:
     ]
 }}"""
 
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        response_text = message.content[0].text
+        response = gemini_model.generate_content(prompt)
+        response_text = response.text
         
         # Parse JSON response
         try:
@@ -1357,12 +1323,9 @@ Return ONLY a JSON object with this structure:
                 detail="Failed to parse AI response. Please try again."
             )
     
-    except anthropic.APIError as e:
-        print(f"❌ Anthropic API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI suggestion failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Error suggesting topics: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to suggest topics: {str(e)}")
+        print(f"❌ Gemini API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI suggestion failed: {str(e)}")
 
 
 @app.post("/admin/ai/quality-check", response_model=schemas.AIQualityCheckResponse)
@@ -1371,12 +1334,12 @@ async def ai_quality_check(
     db: Session = Depends(database.get_db),
     current_admin: models.User = Depends(get_current_admin)
 ):
-    """Quality check content using Claude AI (Admin Only)."""
+    """Quality check content using Google Gemini AI (Admin Only)."""
     
-    if not anthropic_client:
+    if not gemini_model:
         raise HTTPException(
             status_code=503,
-            detail="AI service not configured. Please set ANTHROPIC_API_KEY environment variable."
+            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
         )
     
     try:
@@ -1414,15 +1377,8 @@ The overall_score should be 0-100 where:
 - 50-69: Acceptable but needs improvement
 - Below 50: Significant issues to address"""
 
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        response_text = message.content[0].text
+        response = gemini_model.generate_content(prompt)
+        response_text = response.text
         
         # Parse JSON response
         try:
@@ -1447,12 +1403,9 @@ The overall_score should be 0-100 where:
                 summary="Quality check completed with limited feedback."
             )
     
-    except anthropic.APIError as e:
-        print(f"❌ Anthropic API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI quality check failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Error checking quality: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to check quality: {str(e)}")
+        print(f"❌ Gemini API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI quality check failed: {str(e)}")
 
 
 # ============================================================

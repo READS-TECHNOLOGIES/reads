@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Users, Plus, ShieldOff, Trash2, Video, List, CheckCircle, AlertCircle, 
     Award, Settings, ArrowLeft, XCircle, RefreshCw, Shield, AlertTriangle, 
-    Sparkles, LayoutDashboard, BookOpen, UserCog
+    LayoutDashboard, BookOpen, UserCog
 } from 'lucide-react';
 import { api } from '../../services/api';
-import AIContentAssistant from './AIContentAssistant';
 
 // ====================================================================
 // --- Toast Notification Component ---
@@ -148,22 +147,8 @@ const DashboardOverview = ({ stats, onToast }) => {
                 })}
             </div>
 
-            {/* Quick Action Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gradient-to-br from-cyan to-primary-cyan-dark p-6 rounded-xl shadow-lg border-2 border-cyan text-white">
-                    <div className="flex items-center space-x-3 mb-3">
-                        <Sparkles size={28} />
-                        <h3 className="text-xl font-bold">AI Content Assistant</h3>
-                    </div>
-                    <p className="text-white/80 text-sm mb-4">
-                        Generate lessons, quizzes, and improve content 10x faster with AI
-                    </p>
-                    <div className="flex items-center space-x-2 text-xs bg-white/20 px-3 py-2 rounded-lg w-fit">
-                        <CheckCircle size={16} />
-                        <span>Powered by Claude Sonnet 4</span>
-                    </div>
-                </div>
-
+            {/* Quick Action Card */}
+            <div className="grid grid-cols-1 gap-6">
                 <div className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-xl shadow-lg border-2 border-red-400 text-white">
                     <div className="flex items-center space-x-3 mb-3">
                         <Shield size={28} />
@@ -1174,7 +1159,6 @@ const AdminModule = ({ user }) => {
 
     const tabs = [
         { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-        { id: 'ai-assistant', name: 'AI Assistant', icon: Sparkles },
         { id: 'manage-content', name: 'Manage Content', icon: List },
         { id: 'add-lesson', name: 'Add Lesson', icon: Plus },
         { id: 'users', name: 'User Management', icon: UserCog },
@@ -1215,7 +1199,6 @@ const AdminModule = ({ user }) => {
             {/* Tab Content */}
             <div className="min-h-screen">
                 {activeTab === 'dashboard' && <DashboardOverview onToast={handleToast} />}
-                {activeTab === 'ai-assistant' && <AIContentAssistant onToast={handleToast} />}
                 {activeTab === 'manage-content' && <ManageContent onToast={handleToast} />}
                 {activeTab === 'add-lesson' && <LessonCreateForm onToast={handleToast} onSuccess={() => setActiveTab('manage-content')} />}
                 {activeTab === 'users' && <UserManagement onToast={handleToast} currentUserId={user.id} />}
@@ -1228,4 +1211,4 @@ const AdminModule = ({ user }) => {
     );
 };
 
-export default AdminModule
+export default AdminModule;

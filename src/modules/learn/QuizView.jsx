@@ -137,7 +137,12 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
     // 🆕 FLAG QUIZ FUNCTION
     const flagQuiz = async (violationType, reason) => {
-        if (isFlagged) return; // Already flagged, don't spam
+        console.log('🚨 flagQuiz called:', { violationType, reason, isFlagged });
+        
+        if (isFlagged) {
+            console.log('⚠️ Already flagged, skipping duplicate flag');
+            return; // Already flagged, don't spam
+        }
 
         const violation = {
             type: violationType,
@@ -145,22 +150,32 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             timestamp: new Date().toISOString()
         };
 
+        console.log('📝 Adding violation to state:', violation);
         setViolations(prev => [...prev, violation]);
         setIsFlagged(true);
 
         // Call API to flag the quiz
         if (quizAttempt?.attempt_id) {
+            console.log('🔄 Calling API to flag quiz:', {
+                lessonId,
+                attemptId: quizAttempt.attempt_id,
+                violationType,
+                reason
+            });
+            
             try {
-                await api.learn.flagQuizAttempt(
+                const result = await api.learn.flagQuizAttempt(
                     lessonId,
                     quizAttempt.attempt_id,
                     violationType,
                     reason
                 );
-                console.log('✅ Quiz flagged successfully:', violation);
+                console.log('✅ API flag result:', result);
             } catch (error) {
-                console.error('❌ Failed to flag quiz:', error);
+                console.error('❌ Failed to flag quiz via API:', error);
             }
+        } else {
+            console.warn('⚠️ No attempt ID available, cannot flag via API');
         }
 
         // Show alert
@@ -169,23 +184,29 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
     // 🔒 ENHANCED COPY & SECURITY PROTECTION WITH FLAGGING
     useEffect(() => {
+        console.log('🔧 Setting up security event listeners. Status:', status, 'isFlagged:', isFlagged);
+        
         const preventCopy = (e) => {
+            console.log('🚫 COPY ATTEMPT DETECTED');
             e.preventDefault();
             setCopyAttempts(prev => prev + 1);
             flagQuiz('COPY_ATTEMPT', 'User attempted to copy quiz content');
         };
 
         const preventCut = (e) => {
+            console.log('🚫 CUT ATTEMPT DETECTED');
             e.preventDefault();
             flagQuiz('CUT_ATTEMPT', 'User attempted to cut quiz content');
         };
 
         const preventRightClick = (e) => {
+            console.log('🚫 RIGHT CLICK DETECTED');
             e.preventDefault();
             flagQuiz('RIGHT_CLICK', 'User attempted to right-click during quiz');
         };
 
         const preventSelectStart = (e) => {
+            console.log('🚫 TEXT SELECTION DETECTED');
             e.preventDefault();
             flagQuiz('TEXT_SELECTION', 'User attempted to select text during quiz');
         };
@@ -193,14 +214,17 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         const preventKeyboardShortcuts = (e) => {
             // Detect Ctrl+C, Ctrl+A, Ctrl+X, Cmd+C, Cmd+A, Cmd+X
             if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+                console.log('🚫 KEYBOARD COPY DETECTED');
                 e.preventDefault();
                 flagQuiz('KEYBOARD_COPY', 'User attempted keyboard copy shortcut (Ctrl/Cmd+C)');
             }
             if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+                console.log('🚫 KEYBOARD SELECT ALL DETECTED');
                 e.preventDefault();
                 flagQuiz('KEYBOARD_SELECT_ALL', 'User attempted select all shortcut (Ctrl/Cmd+A)');
             }
             if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
+                console.log('🚫 KEYBOARD CUT DETECTED');
                 e.preventDefault();
                 flagQuiz('KEYBOARD_CUT', 'User attempted keyboard cut shortcut (Ctrl/Cmd+X)');
             }
@@ -208,6 +232,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
         const container = quizContainerRef.current;
         if (container && status === 'questions' && !isFlagged) {
+            console.log('✅ Attaching event listeners to container');
             container.addEventListener('copy', preventCopy);
             container.addEventListener('cut', preventCut);
             container.addEventListener('contextmenu', preventRightClick);
@@ -215,12 +240,15 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             document.addEventListener('keydown', preventKeyboardShortcuts);
             
             return () => {
+                console.log('🧹 Cleaning up event listeners');
                 container.removeEventListener('copy', preventCopy);
                 container.removeEventListener('cut', preventCut);
                 container.removeEventListener('contextmenu', preventRightClick);
                 container.removeEventListener('selectstart', preventSelectStart);
                 document.removeEventListener('keydown', preventKeyboardShortcuts);
             };
+        } else {
+            console.log('⚠️ Not attaching listeners. Container:', !!container, 'Status:', status, 'isFlagged:', isFlagged);
         }
     }, [status, isFlagged, quizAttempt, lessonId]);
 
@@ -242,6 +270,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
                 // Start quiz attempt with random questions
                 const attempt = await api.learn.startQuizAttempt(lessonId);
+                console.log('✅ Quiz attempt started:', attempt);
                 setQuizAttempt(attempt);
                 setQuestions(attempt.questions);
                 setAttemptStartTime(Date.now());
@@ -460,17 +489,15 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 <ArrowLeft size={16} className="mr-1" /> Back to Lesson
             </button>
 
-            {/* 🔒 Copy Protection Warning */}
-            {copyAttempts > 0 && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-500 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                        <Shield size={20} className="text-red-600 dark:text-red-400" />
-                        <p className="text-sm text-red-700 dark:text-red-300">
-                            ⚠️ Copy protection is active. Attempting to copy will flag this quiz.
-                        </p>
-                    </div>
+            {/* 🔒 Security Warning */}
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-500 rounded-lg">
+                <div className="flex items-center space-x-2">
+                    <Shield size={20} className="text-yellow-600 dark:text-yellow-400" />
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        🔒 This quiz is protected. Right-click, text selection, and copying will flag the quiz.
+                    </p>
                 </div>
-            )}
+            </div>
 
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold dark:text-white">Quiz: {lessonTitle}</h2>
@@ -566,14 +593,6 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     </p>
                 </div>
             )}
-
-            {/* Security Warning */}
-            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg">
-                <p className="text-xs text-yellow-800 dark:text-yellow-200 text-center flex items-center justify-center">
-                    <Shield size={14} className="mr-2" />
-                    🔒 This quiz is protected. Right-click, text selection, and copying are disabled and will flag the quiz.
-                </p>
-            </div>
         </div>
     );
 };

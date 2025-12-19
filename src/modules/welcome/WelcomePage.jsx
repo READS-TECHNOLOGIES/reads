@@ -73,7 +73,7 @@ const WelcomePage = ({ onGetStarted }) => {
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={onGetStarted}
-                  className="px-8 py-4 rounded-xl bg-cyan text-primary-navy font-bold hover:bg-cyan-dark transition-all shadow-lg shadow-cyan/50 flex items-center gap-2 text-lg"
+                  className="px-8 py-4 rounded-xl bg-transparent text-card-light font-bold hover:bg-white/10 transition-colors border-2 border-card-light/30"
                 >
                   Get Started Free <ArrowRight size={20} />
                 </button>

@@ -75,7 +75,7 @@ const WelcomePage = ({ onGetStarted }) => {
             onClick={onGetStarted}
             className="px-12 py-5 rounded-xl bg-primary-navy text-yellow-400 font-bold hover:bg-primary-navy-dark transition-all shadow-2xl text-lg"
           >
-            Create Free Account
+            Get Started
 <ArrowRight size={20} />
           </button>
                 <button

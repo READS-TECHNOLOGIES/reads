@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
-import { ArrowLeft, CheckCircle, XCircle, Award, RefreshCw, Shield, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Award, RefreshCw, Shield, AlertTriangle, Clock, Ban } from 'lucide-react';
 
 // --- Helper Components ---
 
@@ -66,8 +66,52 @@ const RateLimitError = ({ status, onNavigate, lessonId }) => (
     </div>
 );
 
+// 🆕 FLAGGED STATE COMPONENT
+const FlaggedState = ({ violations, lessonTitle, onNavigate, lessonId }) => (
+    <div className="space-y-6 animate-fade-in p-8 bg-red-50 dark:bg-red-900/20 rounded-2xl shadow-lg border-l-4 border-red-500">
+        <Ban size={48} className="text-red-600 dark:text-red-400 mx-auto" />
+        <h3 className="text-2xl font-bold text-center text-red-800 dark:text-red-300">Quiz Flagged</h3>
+        <p className="text-center text-red-700 dark:text-red-400">
+            This quiz attempt for <strong>{lessonTitle}</strong> has been flagged due to security violations.
+        </p>
+        
+        <div className="bg-red-100 dark:bg-red-900/40 p-4 rounded-lg">
+            <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2 flex items-center">
+                <AlertTriangle size={18} className="mr-2" />
+                Violations Detected ({violations.length})
+            </h4>
+            <ul className="space-y-2 text-sm text-red-700 dark:text-red-400">
+                {violations.map((v, idx) => (
+                    <li key={idx} className="flex items-start">
+                        <span className="mr-2">•</span>
+                        <div>
+                            <strong>{v.type}:</strong> {v.reason}
+                            <span className="text-xs block text-red-600 dark:text-red-500 mt-1">
+                                {new Date(v.timestamp).toLocaleTimeString()}
+                            </span>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-400">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                ⚠️ <strong>This attempt has been recorded.</strong> You cannot submit this quiz. Please try again and avoid any suspicious activities.
+            </p>
+        </div>
+
+        <button 
+            onClick={() => onNavigate('learn', 'detail', lessonId)}
+            className="w-full px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition font-semibold flex items-center justify-center"
+        >
+            <ArrowLeft size={16} className="mr-2" /> Back to Lesson
+        </button>
+    </div>
+);
+
 // ===================================================================
-// --- MAIN QuizView COMPONENT WITH ANTI-CHEAT ---
+// --- MAIN QuizView COMPONENT WITH ANTI-CHEAT & FLAGGING ---
 // ===================================================================
 
 const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
@@ -84,35 +128,101 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     const [errorMessage, setErrorMessage] = useState('');
     const [copyAttempts, setCopyAttempts] = useState(0);
     const [quizStatus, setQuizStatus] = useState(null);
+    
+    // 🆕 FLAGGING STATE
+    const [isFlagged, setIsFlagged] = useState(false);
+    const [violations, setViolations] = useState([]);
 
     const quizContainerRef = useRef(null);
 
-    // 🔒 COPY PROTECTION
+    // 🆕 FLAG QUIZ FUNCTION
+    const flagQuiz = async (violationType, reason) => {
+        if (isFlagged) return; // Already flagged, don't spam
+
+        const violation = {
+            type: violationType,
+            reason: reason,
+            timestamp: new Date().toISOString()
+        };
+
+        setViolations(prev => [...prev, violation]);
+        setIsFlagged(true);
+
+        // Call API to flag the quiz
+        if (quizAttempt?.attempt_id) {
+            try {
+                await api.learn.flagQuizAttempt(
+                    lessonId,
+                    quizAttempt.attempt_id,
+                    violationType,
+                    reason
+                );
+                console.log('✅ Quiz flagged successfully:', violation);
+            } catch (error) {
+                console.error('❌ Failed to flag quiz:', error);
+            }
+        }
+
+        // Show alert
+        alert(`⚠️ Security Violation Detected!\n\n${reason}\n\nThis quiz has been flagged and cannot be submitted.`);
+    };
+
+    // 🔒 ENHANCED COPY & SECURITY PROTECTION WITH FLAGGING
     useEffect(() => {
         const preventCopy = (e) => {
             e.preventDefault();
             setCopyAttempts(prev => prev + 1);
-            if (copyAttempts >= 2) {
-                alert('⚠️ Copy protection active. Please answer honestly.');
-            }
+            flagQuiz('COPY_ATTEMPT', 'User attempted to copy quiz content');
+        };
+
+        const preventCut = (e) => {
+            e.preventDefault();
+            flagQuiz('CUT_ATTEMPT', 'User attempted to cut quiz content');
         };
 
         const preventRightClick = (e) => {
             e.preventDefault();
-            alert('⚠️ Right-click is disabled during the quiz.');
+            flagQuiz('RIGHT_CLICK', 'User attempted to right-click during quiz');
+        };
+
+        const preventSelectStart = (e) => {
+            e.preventDefault();
+            flagQuiz('TEXT_SELECTION', 'User attempted to select text during quiz');
+        };
+
+        const preventKeyboardShortcuts = (e) => {
+            // Detect Ctrl+C, Ctrl+A, Ctrl+X, Cmd+C, Cmd+A, Cmd+X
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+                e.preventDefault();
+                flagQuiz('KEYBOARD_COPY', 'User attempted keyboard copy shortcut (Ctrl/Cmd+C)');
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault();
+                flagQuiz('KEYBOARD_SELECT_ALL', 'User attempted select all shortcut (Ctrl/Cmd+A)');
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
+                e.preventDefault();
+                flagQuiz('KEYBOARD_CUT', 'User attempted keyboard cut shortcut (Ctrl/Cmd+X)');
+            }
         };
 
         const container = quizContainerRef.current;
-        if (container && status === 'questions') {
+        if (container && status === 'questions' && !isFlagged) {
             container.addEventListener('copy', preventCopy);
+            container.addEventListener('cut', preventCut);
             container.addEventListener('contextmenu', preventRightClick);
+            container.addEventListener('selectstart', preventSelectStart);
+            document.addEventListener('keydown', preventKeyboardShortcuts);
             
             return () => {
                 container.removeEventListener('copy', preventCopy);
+                container.removeEventListener('cut', preventCut);
                 container.removeEventListener('contextmenu', preventRightClick);
+                container.removeEventListener('selectstart', preventSelectStart);
+                document.removeEventListener('keydown', preventKeyboardShortcuts);
             };
         }
-    }, [copyAttempts, status]);
+    }, [status, isFlagged, quizAttempt, lessonId]);
 
     // 🆕 INITIALIZE QUIZ WITH ANTI-CHEAT
     useEffect(() => {
@@ -159,6 +269,11 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
     // 🆕 TRACK TIME PER QUESTION
     const handleAnswerChange = (questionId, selectedOption) => {
+        if (isFlagged) {
+            alert('⚠️ This quiz has been flagged. You cannot change answers.');
+            return;
+        }
+
         const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
         
         setAnswers(prev => ({
@@ -174,6 +289,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 
     // Navigate between questions
     const handleNextQuestion = () => {
+        if (isFlagged) return;
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
             setQuestionStartTime(Date.now());
@@ -181,14 +297,20 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
     };
 
     const handlePreviousQuestion = () => {
+        if (isFlagged) return;
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(prev => prev - 1);
             setQuestionStartTime(Date.now());
         }
     };
 
-    // 🆕 SUBMIT WITH TIME VALIDATION - NAVIGATE TO RESULTS PAGE
+    // 🆕 SUBMIT WITH TIME VALIDATION - PREVENT IF FLAGGED
     const handleSubmit = async () => {
+        if (isFlagged) {
+            alert('⚠️ This quiz has been flagged and cannot be submitted. Please return to the lesson and try again.');
+            return;
+        }
+
         setStatus('submitting');
         setErrorMessage('');
 
@@ -313,6 +435,16 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
         );
     }
 
+    // 🆕 SHOW FLAGGED STATE IF QUIZ IS FLAGGED
+    if (isFlagged) {
+        return <FlaggedState 
+            violations={violations} 
+            lessonTitle={lessonTitle} 
+            onNavigate={onNavigate}
+            lessonId={lessonId}
+        />;
+    }
+
     // 🆕 QUIZ INTERFACE WITH ANTI-CHEAT
     const currentQuestion = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
@@ -334,7 +466,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     <div className="flex items-center space-x-2">
                         <Shield size={20} className="text-red-600 dark:text-red-400" />
                         <p className="text-sm text-red-700 dark:text-red-300">
-                            ⚠️ Copy protection is active. Please answer honestly.
+                            ⚠️ Copy protection is active. Attempting to copy will flag this quiz.
                         </p>
                     </div>
                 </div>
@@ -370,11 +502,13 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                             <button
                                 key={option}
                                 onClick={() => handleAnswerChange(currentQuestion.id, optionKey)}
+                                disabled={isFlagged}
                                 className={`w-full text-left p-4 rounded-lg border-2 transition-all duration-200 
                                     ${isSelected 
                                         ? 'bg-indigo-500 text-white border-indigo-500 shadow-md ring-4 ring-indigo-200 dark:ring-indigo-800' 
                                         : 'bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-slate-600 hover:border-indigo-300'
-                                    }`
+                                    }
+                                    ${isFlagged ? 'opacity-50 cursor-not-allowed' : ''}`
                                 }
                             >
                                 {option}
@@ -388,7 +522,7 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
             <div className="flex items-center justify-between pt-4">
                 <button
                     onClick={handlePreviousQuestion}
-                    disabled={currentQuestionIndex === 0}
+                    disabled={currentQuestionIndex === 0 || isFlagged}
                     className="px-6 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                     Previous
@@ -401,16 +535,17 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                 {currentQuestionIndex < questions.length - 1 ? (
                     <button
                         onClick={handleNextQuestion}
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                        disabled={isFlagged}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                         Next
                     </button>
                 ) : (
                     <button
                         onClick={handleSubmit}
-                        disabled={!allAnswered}
+                        disabled={!allAnswered || isFlagged}
                         className={`px-8 py-3 text-lg font-semibold text-white rounded-full shadow-lg transition duration-200 flex items-center space-x-2
-                            ${allAnswered 
+                            ${allAnswered && !isFlagged
                                 ? 'bg-green-500 hover:bg-green-600 transform hover:scale-105'
                                 : 'bg-gray-400 cursor-not-allowed'
                             }`
@@ -431,6 +566,14 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
                     </p>
                 </div>
             )}
+
+            {/* Security Warning */}
+            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg">
+                <p className="text-xs text-yellow-800 dark:text-yellow-200 text-center flex items-center justify-center">
+                    <Shield size={14} className="mr-2" />
+                    🔒 This quiz is protected. Right-click, text selection, and copying are disabled and will flag the quiz.
+                </p>
+            </div>
         </div>
     );
 };

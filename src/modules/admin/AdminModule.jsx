@@ -1038,12 +1038,16 @@ const UserManagement = ({ onToast, currentUserId }) => {
 };
 
 // ====================================================================
-// --- Suspicious Attempts Monitor ---
+// --- Enhanced Suspicious Attempts Monitor with Flagging Details ---
 // ====================================================================
 
-const SuspiciousAttemptsMonitor = ({ onToast }) => {
+import React, { useState, useCallback, useEffect } from 'react';
+import { AlertTriangle, RefreshCw, CheckCircle, Ban, Clock, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+
+const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
     const [attempts, setAttempts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [expandedAttempt, setExpandedAttempt] = useState(null);
 
     const fetchAttempts = useCallback(async () => {
         setIsLoading(true);
@@ -1055,11 +1059,32 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [onToast]);
+    }, [onToast, api]);
 
     useEffect(() => {
         fetchAttempts();
     }, [fetchAttempts]);
+
+    const getViolationBadge = (timeSpent, expectedMin) => {
+        const ratio = timeSpent / expectedMin;
+        if (ratio < 0.3) return { color: 'bg-red-500', label: 'SEVERE', intensity: 'Critical' };
+        if (ratio < 0.5) return { color: 'bg-orange-500', label: 'HIGH', intensity: 'High' };
+        if (ratio < 0.7) return { color: 'bg-yellow-500', label: 'MEDIUM', intensity: 'Medium' };
+        return { color: 'bg-blue-500', label: 'LOW', intensity: 'Low' };
+    };
+
+    const getViolationType = (attempt) => {
+        // This is a placeholder - you'll need to extend your backend to store violation types
+        // For now, we'll determine it based on time
+        const ratio = attempt.total_time_seconds / attempt.expected_min_time;
+        if (ratio < 0.3) return 'Extreme Speed Violation';
+        if (ratio < 0.5) return 'Time Manipulation Suspected';
+        return 'Abnormal Completion Time';
+    };
+
+    const toggleExpand = (attemptId) => {
+        setExpandedAttempt(expandedAttempt === attemptId ? null : attemptId);
+    };
 
     if (isLoading) {
         return (
@@ -1072,11 +1097,17 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
-                    <AlertTriangle size={24} className="mr-2 text-yellow-500" />
-                    Suspicious Quiz Attempts ({attempts.length})
-                </h3>
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                        <AlertTriangle size={24} className="mr-2 text-yellow-500" />
+                        Suspicious Quiz Attempts
+                    </h3>
+                    <p className="text-sm text-card-muted mt-1">
+                        {attempts.length} flagged attempts detected
+                    </p>
+                </div>
                 <button
                     onClick={fetchAttempts}
                     className="px-4 py-2 bg-cyan text-white rounded-lg hover:bg-primary-cyan-dark flex items-center border-2 border-cyan transition-colors"
@@ -1085,6 +1116,46 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
                 </button>
             </div>
 
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-red-500/10 border-2 border-red-500 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-red-400 font-medium">Total Flagged</p>
+                            <p className="text-3xl font-bold text-red-500">{attempts.length}</p>
+                        </div>
+                        <Ban size={32} className="text-red-500 opacity-50" />
+                    </div>
+                </div>
+
+                <div className="bg-orange-500/10 border-2 border-orange-500 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-orange-400 font-medium">Severe Violations</p>
+                            <p className="text-3xl font-bold text-orange-500">
+                                {attempts.filter(a => a.total_time_seconds / a.expected_min_time < 0.3).length}
+                            </p>
+                        </div>
+                        <AlertTriangle size={32} className="text-orange-500 opacity-50" />
+                    </div>
+                </div>
+
+                <div className="bg-yellow-500/10 border-2 border-yellow-500 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-yellow-400 font-medium">Last 24 Hours</p>
+                            <p className="text-3xl font-bold text-yellow-500">
+                                {attempts.filter(a => 
+                                    (Date.now() - new Date(a.flagged_at).getTime()) < 86400000
+                                ).length}
+                            </p>
+                        </div>
+                        <Clock size={32} className="text-yellow-500 opacity-50" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Attempts List */}
             {attempts.length === 0 ? (
                 <div className="text-center p-12 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-500">
                     <CheckCircle size={48} className="mx-auto mb-3 text-green-500" />
@@ -1092,45 +1163,170 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
                     <p className="text-sm text-green-600 dark:text-green-400 mt-2">All quiz submissions appear legitimate</p>
                 </div>
             ) : (
-                <div className="overflow-x-auto bg-light-card dark:bg-dark-card rounded-xl border-2 border-cyan">
-                    <table className="w-full">
-                        <thead className="bg-cyan/20 border-b-2 border-cyan">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">User</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Lesson</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Time Taken</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Expected Min</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Score</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Flagged At</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-cyan-light">
-                            {attempts.map((attempt) => (
-                                <tr key={attempt.attempt_id} className="hover:bg-black/20 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-white font-medium">{attempt.user_name}</td>
-                                    <td className="px-4 py-3 text-sm text-card-muted">{attempt.lesson_title}</td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <span className="text-red-500 font-bold">{attempt.total_time_seconds}s</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-card-muted">{attempt.expected_min_time}s</td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <span className={`font-semibold ${attempt.score >= 70 ? 'text-green-500' : 'text-red-500'}`}>
-                                            {attempt.score}%
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-card-muted">
-                                        {new Date(attempt.flagged_at).toLocaleString()}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="space-y-4">
+                    {attempts.map((attempt) => {
+                        const badge = getViolationBadge(attempt.total_time_seconds, attempt.expected_min_time);
+                        const isExpanded = expandedAttempt === attempt.attempt_id;
+                        const violationType = getViolationType(attempt);
+                        const timeDiff = attempt.expected_min_time - attempt.total_time_seconds;
+                        const percentageFaster = ((timeDiff / attempt.expected_min_time) * 100).toFixed(0);
+
+                        return (
+                            <div
+                                key={attempt.attempt_id}
+                                className="bg-light-card dark:bg-dark-card rounded-xl border-2 border-red-500 overflow-hidden transition-all hover:shadow-lg"
+                            >
+                                {/* Main Row */}
+                                <div
+                                    onClick={() => toggleExpand(attempt.attempt_id)}
+                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/20 transition-colors"
+                                >
+                                    <div className="flex items-center space-x-4 flex-1">
+                                        {/* Severity Badge */}
+                                        <div className={`${badge.color} text-white px-3 py-1 rounded-lg text-xs font-bold flex-shrink-0`}>
+                                            {badge.label}
+                                        </div>
+
+                                        {/* User Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center space-x-2 mb-1">
+                                                <p className="font-bold text-white truncate">{attempt.user_name}</p>
+                                                <span className="text-xs text-card-muted">•</span>
+                                                <p className="text-sm text-card-muted truncate">{attempt.lesson_title}</p>
+                                            </div>
+                                            <div className="flex items-center space-x-4 text-xs">
+                                                <span className="text-red-400 font-semibold">
+                                                    ⚡ {attempt.total_time_seconds}s (Expected: {attempt.expected_min_time}s)
+                                                </span>
+                                                <span className="text-yellow-400">
+                                                    {percentageFaster}% faster than minimum
+                                                </span>
+                                                {attempt.score >= 70 && (
+                                                    <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                                        ✓ Passed ({attempt.score}%)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Timestamp */}
+                                        <div className="text-right flex-shrink-0 hidden md:block">
+                                            <p className="text-xs text-card-muted">
+                                                {new Date(attempt.flagged_at).toLocaleDateString()}
+                                            </p>
+                                            <p className="text-xs text-card-muted">
+                                                {new Date(attempt.flagged_at).toLocaleTimeString()}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Expand Icon */}
+                                    <div className="ml-4 flex-shrink-0">
+                                        {isExpanded ? (
+                                            <ChevronUp size={20} className="text-cyan" />
+                                        ) : (
+                                            <ChevronDown size={20} className="text-card-muted" />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {isExpanded && (
+                                    <div className="border-t-2 border-red-500/30 bg-black/20 p-4 space-y-4">
+                                        {/* Violation Details */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                                                <h5 className="text-sm font-semibold text-red-400 mb-3 flex items-center">
+                                                    <AlertTriangle size={16} className="mr-2" />
+                                                    Violation Type
+                                                </h5>
+                                                <p className="text-white font-medium">{violationType}</p>
+                                                <p className="text-sm text-card-muted mt-2">
+                                                    Severity: <span className={`font-semibold ${
+                                                        badge.intensity === 'Critical' ? 'text-red-500' :
+                                                        badge.intensity === 'High' ? 'text-orange-500' :
+                                                        badge.intensity === 'Medium' ? 'text-yellow-500' :
+                                                        'text-blue-500'
+                                                    }`}>{badge.intensity}</span>
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                                                <h5 className="text-sm font-semibold text-orange-400 mb-3 flex items-center">
+                                                    <Clock size={16} className="mr-2" />
+                                                    Time Analysis
+                                                </h5>
+                                                <div className="space-y-2 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-card-muted">Time Taken:</span>
+                                                        <span className="text-red-400 font-bold">{attempt.total_time_seconds}s</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-card-muted">Expected Minimum:</span>
+                                                        <span className="text-white">{attempt.expected_min_time}s</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-card-muted">Time Difference:</span>
+                                                        <span className="text-yellow-400 font-bold">-{timeDiff}s ({percentageFaster}%)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Additional Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                                <p className="text-xs text-blue-400 mb-1">Quiz Score</p>
+                                                <p className={`text-2xl font-bold ${
+                                                    attempt.score >= 70 ? 'text-green-500' : 'text-red-500'
+                                                }`}>
+                                                    {attempt.score}%
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                                                <p className="text-xs text-purple-400 mb-1">User ID</p>
+                                                <p className="text-sm text-white font-mono truncate">
+                                                    {attempt.user_id.toString().substring(0, 8)}...
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-cyan/10 border border-cyan/30 rounded-lg p-3">
+                                                <p className="text-xs text-cyan mb-1">Attempt ID</p>
+                                                <p className="text-sm text-white font-mono truncate">
+                                                    {attempt.attempt_id.toString().substring(0, 8)}...
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Warning Message */}
+                                        <div className="bg-yellow-500/10 border-l-4 border-yellow-500 p-4 rounded">
+                                            <div className="flex items-start space-x-3">
+                                                <Shield size={20} className="text-yellow-500 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-semibold text-yellow-400">
+                                                        Anti-Cheat Detection
+                                                    </p>
+                                                    <p className="text-xs text-yellow-300 mt-1">
+                                                        This attempt was automatically flagged by the anti-cheat system due to 
+                                                        completion time significantly below the expected minimum. Consider reviewing 
+                                                        this user's account for patterns of suspicious behavior.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
     );
 };
 
+export default SuspiciousAttemptsMonitor;
 // ====================================================================
 // --- Main Admin Module ---
 // ====================================================================

@@ -247,7 +247,6 @@ const WelcomePage = ({ onGetStarted }) => {
             <p className="text-card-muted">Pass quizzes and earn 100 tokens for each success</p>
           </div>
         </div>
-      </div>
 
       {/* CTA Section */}
       <div className="bg-gradient-to-r from-cyan via-cyan-dark to-cyan py-20">

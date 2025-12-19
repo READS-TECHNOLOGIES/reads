@@ -1325,8 +1325,6 @@ const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
         </div>
     );
 };
-
-export default SuspiciousAttemptsMonitor;
 // ====================================================================
 // --- Main Admin Module ---
 // ====================================================================

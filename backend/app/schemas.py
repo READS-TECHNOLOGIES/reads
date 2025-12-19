@@ -190,6 +190,19 @@ class QuizAttemptStatus(BaseModel):
     hourly_attempts_remaining: Optional[int] = None
     daily_attempts_remaining: Optional[int] = None
 
+# --- 🚨 ANTI-CHEAT: Quiz Flagging Schemas ---
+class QuizFlagRequest(BaseModel):
+    lesson_id: UUID
+    attempt_id: UUID
+    violation_type: str = Field(..., description="Type of violation (e.g., RIGHT_CLICK, COPY_ATTEMPT, TEXT_SELECTION)")
+    violation_details: Optional[str] = Field(None, description="Additional details about the violation")
+
+class QuizFlagResponse(BaseModel):
+    message: str
+    success: bool
+    attempt_id: Optional[str] = None
+    violation_type: Optional[str] = None
+
 # --- Reward Schemas ---
 class RewardSummary(BaseModel):
     total_tokens_earned: int
@@ -222,69 +235,3 @@ class SuspiciousAttempt(BaseModel):
 
     class Config:
         from_attributes = True
-
-# ============================================================
-# 🤖 AI CONTENT ASSISTANT SCHEMAS
-# ============================================================
-
-# --- Generate Lesson Schemas ---
-class AIGenerateLessonRequest(BaseModel):
-    topic: str = Field(..., min_length=3, max_length=200, description="Topic for the lesson")
-    category: str = Field(..., description="Category (e.g., JAMB, WAEC, NECO, General)")
-    difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
-    target_length: int = Field(default=1000, ge=500, le=5000, description="Target word count")
-
-class AILessonResponse(BaseModel):
-    title: str
-    content: str
-
-# --- Generate Quiz Schemas ---
-class AIGenerateQuizRequest(BaseModel):
-    lesson_content: str = Field(..., min_length=100, description="Lesson content to generate quiz from")
-    num_questions: int = Field(default=10, ge=3, le=20, description="Number of questions to generate")
-    difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
-
-class AIQuizQuestion(BaseModel):
-    question: str
-    options: List[str] = Field(..., min_items=4, max_items=4)
-    correct_option: str = Field(..., pattern="^[A-D]$")
-
-class AIQuizResponse(BaseModel):
-    questions: List[AIQuizQuestion]
-
-# --- Improve Content Schemas ---
-class AIImproveContentRequest(BaseModel):
-    content: str = Field(..., min_length=50, description="Content to improve")
-    instruction: str = Field(..., min_length=5, max_length=500, description="Improvement instructions")
-
-class AIImproveContentResponse(BaseModel):
-    improved_content: str
-    explanation: str
-
-# --- Suggest Topics Schemas ---
-class AISuggestTopicsRequest(BaseModel):
-    topic: str = Field(..., min_length=3, max_length=200, description="Current topic")
-    category: str = Field(..., description="Category context")
-    num_suggestions: int = Field(default=5, ge=3, le=10, description="Number of suggestions")
-
-class AITopicSuggestion(BaseModel):
-    title: str
-    description: str
-
-class AISuggestTopicsResponse(BaseModel):
-    suggestions: List[AITopicSuggestion]
-
-# --- Quality Check Schemas ---
-class AIQualityCheckRequest(BaseModel):
-    content: str = Field(..., min_length=50, description="Content to check")
-    content_type: str = Field(default="lesson", description="Type: lesson or quiz")
-
-class AIQualityCheckResponse(BaseModel):
-    overall_score: int = Field(..., ge=0, le=100, description="Overall quality score 0-100")
-    issues: List[str] = Field(default_factory=list, description="List of issues found")
-    suggestions: List[str] = Field(default_factory=list, description="List of improvement suggestions")
-    summary: str = Field(..., description="Summary of quality assessment")
-
-# ============================================================
-# END OF AI SCHEMAS
-# ============================================================

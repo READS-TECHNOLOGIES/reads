@@ -1034,12 +1034,11 @@ const UserManagement = ({ onToast, currentUserId }) => {
         </div>
     );
 };
-
 // ====================================================================
 // --- Enhanced Suspicious Attempts Monitor with Flagging Details ---
 // ====================================================================
 
-const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
+const SuspiciousAttemptsMonitor = ({ onToast }) => {
     const [attempts, setAttempts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedAttempt, setExpandedAttempt] = useState(null);
@@ -1054,7 +1053,7 @@ const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [onToast, api]);
+    }, [onToast]);
 
     useEffect(() => {
         fetchAttempts();
@@ -1069,8 +1068,6 @@ const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
     };
 
     const getViolationType = (attempt) => {
-        // This is a placeholder - you'll need to extend your backend to store violation types
-        // For now, we'll determine it based on time
         const ratio = attempt.total_time_seconds / attempt.expected_min_time;
         if (ratio < 0.3) return 'Extreme Speed Violation';
         if (ratio < 0.5) return 'Time Manipulation Suspected';

@@ -1041,9 +1041,6 @@ const UserManagement = ({ onToast, currentUserId }) => {
 // --- Enhanced Suspicious Attempts Monitor with Flagging Details ---
 // ====================================================================
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, CheckCircle, Ban, Clock, Shield, ChevronDown, ChevronUp } from 'lucide-react';
-
 const SuspiciousAttemptsMonitor = ({ onToast, api }) => {
     const [attempts, setAttempts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);

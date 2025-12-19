@@ -3,7 +3,9 @@ import {
     Users, Plus, ShieldOff, Trash2, Video, List, CheckCircle, AlertCircle, 
     Award, Settings, ArrowLeft, XCircle, RefreshCw, Shield, AlertTriangle, 
     LayoutDashboard, BookOpen, UserCog, Ban, Clock, ChevronDown, ChevronUp
-} 
+} from 'lucide-react';
+import { api } from '../../services/api';
+
 // ====================================================================
 // --- Toast Notification Component ---
 // ====================================================================
@@ -1034,6 +1036,7 @@ const UserManagement = ({ onToast, currentUserId }) => {
         </div>
     );
 };
+
 // ====================================================================
 // --- Enhanced Suspicious Attempts Monitor with Flagging Details ---
 // ====================================================================
@@ -1317,6 +1320,7 @@ const SuspiciousAttemptsMonitor = ({ onToast }) => {
         </div>
     );
 };
+
 // ====================================================================
 // --- Main Admin Module ---
 // ====================================================================

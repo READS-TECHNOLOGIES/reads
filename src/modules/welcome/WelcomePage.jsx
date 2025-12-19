@@ -71,12 +71,13 @@ const WelcomePage = ({ onGetStarted }) => {
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={onGetStarted}
-                  className="px-8 py-4 rounded-xl bg-transparent text-card-light font-bold hover:bg-white/10 transition-colors border-2 border-card-light/30"
-                >
-                  Get Started Free <ArrowRight size={20} />
-                </button>
+                 <button
+            onClick={onGetStarted}
+            className="px-12 py-5 rounded-xl bg-primary-navy text-yellow-400 font-bold hover:bg-primary-navy-dark transition-all shadow-2xl text-lg"
+          >
+            Create Free Account
+<ArrowRight size={20} />
+          </button>
                 <button
                   className="px-8 py-4 rounded-xl bg-transparent text-card-light font-bold hover:bg-white/10 transition-colors border-2 border-card-light/30"
                   onClick={() => window.open('https://readstechnet.vercel.app', '_blank')}

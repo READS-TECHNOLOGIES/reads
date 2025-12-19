@@ -10,9 +10,6 @@ import os
 import random
 import json
 
-# 🤖 Google Gemini imports
-import google.generativeai as genai
-
 from .app import models, schemas, auth, database, email_service
 from .app import cardano_utils
 
@@ -33,20 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 🤖 Initialize Google Gemini client
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    print("⚠️ WARNING: GOOGLE_API_KEY not set. AI features will not work.")
-    gemini_model = None
-else:
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        print("✅ Google Gemini API client initialized successfully (gemini-2.0-flash-exp)")
-    except Exception as e:
-        print(f"❌ Failed to initialize Gemini: {e}")
-        gemini_model = None
 
 # Dependencies
 def get_current_admin(current_user: models.User = Depends(auth.get_current_user)):
@@ -524,7 +507,7 @@ def track_lesson_time(
     return {"message": "Read time tracked successfully"}
 
 # ----------------------------------------------------
-# 🆕 3.3 ANTI-CHEAT QUIZ SYSTEM
+# 🆕 3.3 ANTI-CHEAT QUIZ SYSTEM WITH FLAGGING
 # ----------------------------------------------------
 
 @app.get("/quiz/{lesson_id}/status", response_model=schemas.QuizAttemptStatus)
@@ -654,6 +637,49 @@ def start_quiz_attempt(
         cooldown_seconds=config.cooldown_seconds
     )
 
+# 🆕 FLAG QUIZ ENDPOINT
+@app.post("/quiz/flag", status_code=200)
+def flag_quiz_attempt(
+    flag_data: schemas.QuizFlagRequest,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Flag a quiz attempt for security violations."""
+    try:
+        # Get the attempt
+        attempt = db.query(models.QuizAttempt).filter(
+            models.QuizAttempt.id == flag_data.attempt_id,
+            models.QuizAttempt.user_id == current_user.id
+        ).first()
+        
+        if not attempt:
+            print(f"⚠️ Attempt not found for flagging: {flag_data.attempt_id}")
+            return {"message": "Attempt not found", "success": False}
+        
+        # Mark as flagged
+        attempt.flagged_suspicious = True
+        
+        # Store violation details in a JSON field (if you have one) or just log it
+        # For now, we'll log it to console and mark the attempt as flagged
+        print(f"🚨 QUIZ FLAGGED: User {current_user.id}, Attempt {attempt.id}")
+        print(f"   Violation: {flag_data.violation_type}")
+        print(f"   Details: {flag_data.violation_details}")
+        print(f"   Lesson ID: {flag_data.lesson_id}")
+        
+        db.commit()
+        
+        return {
+            "message": "Quiz attempt flagged successfully",
+            "success": True,
+            "attempt_id": str(attempt.id),
+            "violation_type": flag_data.violation_type
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error flagging quiz: {str(e)}")
+        return {"message": "Failed to flag quiz", "success": False}
+
 @app.post("/quiz/submit", response_model=schemas.QuizResultResponse)
 def submit_quiz(
     submission: schemas.QuizSubmitRequest,
@@ -675,6 +701,13 @@ def submit_quiz(
     
     if attempt.completed_at:
         raise HTTPException(status_code=400, detail="Quiz already submitted")
+    
+    # 🚨 PREVENT SUBMISSION IF FLAGGED
+    if attempt.flagged_suspicious:
+        raise HTTPException(
+            status_code=403, 
+            detail="This quiz has been flagged for security violations and cannot be submitted"
+        )
     
     # Get config
     config = db.query(models.QuizConfig).filter(
@@ -1061,353 +1094,3 @@ def delete_quiz(lesson_id: str, db: Session = Depends(database.get_db), current_
     db.commit()  
 
     return
-
-# ============================================================
-# 🤖 AI CONTENT ASSISTANT ENDPOINTS (Google Gemini)
-# ============================================================
-
-@app.post("/admin/ai/generate-lesson", response_model=schemas.AILessonResponse)
-async def ai_generate_lesson(
-    request: schemas.AIGenerateLessonRequest,
-    db: Session = Depends(database.get_db),
-    current_admin: models.User = Depends(get_current_admin)
-):
-    """Generate lesson content using Google Gemini AI (Admin Only)."""
-    
-    if not gemini_model:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
-        )
-    
-    try:
-        # Construct prompt for lesson generation
-        prompt = f"""You are an expert educational content creator. Generate a comprehensive lesson on the following topic:
-
-Topic: {request.topic}
-Category: {request.category}
-Difficulty Level: {request.difficulty}
-Target Length: Approximately {request.target_length} words
-
-Please create a well-structured lesson that includes:
-1. A clear, engaging title
-2. An introduction that hooks the learner
-3. Main content organized in logical sections
-4. Key concepts explained with examples
-5. A summary or conclusion
-6. The content should be appropriate for {request.difficulty} level students
-7. Use clear, educational language suitable for {request.category} examination preparation
-
-Format the content in a way that's easy to read and understand. Use markdown formatting where appropriate.
-
-Return ONLY a JSON object with this structure:
-{{
-    "title": "Lesson Title Here",
-    "content": "Full lesson content here with markdown formatting..."
-}}"""
-
-        # Call Gemini API
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse JSON response
-        try:
-            # Try to extract JSON from response
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                response_text = response_text[json_start:json_end]
-            
-            result = json.loads(response_text)
-            
-            return schemas.AILessonResponse(
-                title=result.get("title", f"Lesson: {request.topic}"),
-                content=result.get("content", response_text)
-            )
-        except json.JSONDecodeError:
-            # If JSON parsing fails, return raw content
-            return schemas.AILessonResponse(
-                title=f"Lesson: {request.topic}",
-                content=response_text
-            )
-    
-    except Exception as e:
-        print(f"❌ Gemini API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
-
-
-@app.post("/admin/ai/generate-quiz", response_model=schemas.AIQuizResponse)
-async def ai_generate_quiz(
-    request: schemas.AIGenerateQuizRequest,
-    db: Session = Depends(database.get_db),
-    current_admin: models.User = Depends(get_current_admin)
-):
-    """Generate quiz questions from lesson content using Google Gemini AI (Admin Only)."""
-    
-    if not gemini_model:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
-        )
-    
-    try:
-        prompt = f"""You are an expert at creating educational quiz questions. Based on the following lesson content, create {request.num_questions} multiple-choice questions.
-
-Lesson Content:
-{request.lesson_content}
-
-Requirements:
-- Difficulty Level: {request.difficulty}
-- Number of questions: {request.num_questions}
-- Each question should have exactly 4 options (A, B, C, D)
-- Questions should test understanding, not just memorization
-- Ensure questions cover different parts of the lesson
-- Make distractors (wrong answers) plausible but clearly incorrect
-
-Return ONLY a JSON object with this exact structure:
-{{
-    "questions": [
-        {{
-            "question": "Question text here?",
-            "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
-            "correct_option": "A"
-        }}
-    ]
-}}
-
-The correct_option must be one of: "A", "B", "C", or "D"."""
-
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse JSON response
-        try:
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                response_text = response_text[json_start:json_end]
-            
-            result = json.loads(response_text)
-            
-            return schemas.AIQuizResponse(
-                questions=result.get("questions", [])
-            )
-        except json.JSONDecodeError as e:
-            print(f"❌ JSON parsing error: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to parse AI response. Please try again."
-            )
-    
-    except Exception as e:
-        print(f"❌ Gemini API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
-
-
-@app.post("/admin/ai/improve-content", response_model=schemas.AIImproveContentResponse)
-async def ai_improve_content(
-    request: schemas.AIImproveContentRequest,
-    db: Session = Depends(database.get_db),
-    current_admin: models.User = Depends(get_current_admin)
-):
-    """Improve existing content using Google Gemini AI (Admin Only)."""
-    
-    if not gemini_model:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
-        )
-    
-    try:
-        prompt = f"""You are an expert content editor. Improve the following content based on the given instructions.
-
-Original Content:
-{request.content}
-
-Improvement Instructions:
-{request.instruction}
-
-Please:
-1. Apply the requested improvements
-2. Maintain the original educational value
-3. Keep the content accurate and clear
-4. Preserve any important technical terms or concepts
-
-Return ONLY a JSON object with this structure:
-{{
-    "improved_content": "The improved version of the content here...",
-    "explanation": "Brief explanation of what changes were made and why"
-}}"""
-
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse JSON response
-        try:
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                response_text = response_text[json_start:json_end]
-            
-            result = json.loads(response_text)
-            
-            return schemas.AIImproveContentResponse(
-                improved_content=result.get("improved_content", response_text),
-                explanation=result.get("explanation", "Content has been improved based on your instructions.")
-            )
-        except json.JSONDecodeError:
-            return schemas.AIImproveContentResponse(
-                improved_content=response_text,
-                explanation="Content has been improved based on your instructions."
-            )
-    
-    except Exception as e:
-        print(f"❌ Gemini API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI improvement failed: {str(e)}")
-
-
-@app.post("/admin/ai/suggest-topics", response_model=schemas.AISuggestTopicsResponse)
-async def ai_suggest_topics(
-    request: schemas.AISuggestTopicsRequest,
-    db: Session = Depends(database.get_db),
-    current_admin: models.User = Depends(get_current_admin)
-):
-    """Suggest related topics using Google Gemini AI (Admin Only)."""
-    
-    if not gemini_model:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
-        )
-    
-    try:
-        prompt = f"""You are an educational curriculum expert. Suggest {request.num_suggestions} related topics that would complement the following topic:
-
-Current Topic: {request.topic}
-Category: {request.category}
-
-Requirements:
-- Suggest topics that are educationally related and build on this topic
-- Topics should be appropriate for {request.category} examination preparation
-- Provide a natural learning progression
-- Each suggestion should include a title and brief description
-
-Return ONLY a JSON object with this structure:
-{{
-    "suggestions": [
-        {{
-            "title": "Related Topic Title",
-            "description": "Brief description of why this topic is relevant and what it covers (1-2 sentences)"
-        }}
-    ]
-}}"""
-
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse JSON response
-        try:
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                response_text = response_text[json_start:json_end]
-            
-            result = json.loads(response_text)
-            
-            return schemas.AISuggestTopicsResponse(
-                suggestions=result.get("suggestions", [])
-            )
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to parse AI response. Please try again."
-            )
-    
-    except Exception as e:
-        print(f"❌ Gemini API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI suggestion failed: {str(e)}")
-
-
-@app.post("/admin/ai/quality-check", response_model=schemas.AIQualityCheckResponse)
-async def ai_quality_check(
-    request: schemas.AIQualityCheckRequest,
-    db: Session = Depends(database.get_db),
-    current_admin: models.User = Depends(get_current_admin)
-):
-    """Quality check content using Google Gemini AI (Admin Only)."""
-    
-    if not gemini_model:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured. Please set GOOGLE_API_KEY environment variable."
-        )
-    
-    try:
-        content_type_context = ""
-        if request.content_type == "quiz":
-            content_type_context = "This is quiz content with questions and answers. Check for clarity, accuracy of questions, and quality of distractors."
-        else:
-            content_type_context = "This is educational lesson content. Check for clarity, accuracy, grammar, and educational value."
-        
-        prompt = f"""You are an expert content quality reviewer. Analyze the following educational content for quality issues.
-
-{content_type_context}
-
-Content to Review:
-{request.content}
-
-Please evaluate:
-1. Grammar and spelling errors
-2. Clarity and readability
-3. Factual accuracy (flag anything that seems questionable)
-4. Educational effectiveness
-5. Overall structure and organization
-
-Return ONLY a JSON object with this structure:
-{{
-    "overall_score": 85,
-    "issues": ["Issue 1 description", "Issue 2 description"],
-    "suggestions": ["Suggestion 1", "Suggestion 2"],
-    "summary": "Brief summary of overall quality and main recommendations"
-}}
-
-The overall_score should be 0-100 where:
-- 90-100: Excellent quality
-- 70-89: Good quality with minor issues
-- 50-69: Acceptable but needs improvement
-- Below 50: Significant issues to address"""
-
-        response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse JSON response
-        try:
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                response_text = response_text[json_start:json_end]
-            
-            result = json.loads(response_text)
-            
-            return schemas.AIQualityCheckResponse(
-                overall_score=result.get("overall_score", 70),
-                issues=result.get("issues", []),
-                suggestions=result.get("suggestions", []),
-                summary=result.get("summary", "Content quality has been analyzed.")
-            )
-        except json.JSONDecodeError:
-            return schemas.AIQualityCheckResponse(
-                overall_score=70,
-                issues=[],
-                suggestions=["Unable to parse detailed feedback, but content appears acceptable."],
-                summary="Quality check completed with limited feedback."
-            )
-    
-    except Exception as e:
-        print(f"❌ Gemini API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI quality check failed: {str(e)}")
-
-
-# ============================================================
-# END OF AI ENDPOINTS
-# ============================================================

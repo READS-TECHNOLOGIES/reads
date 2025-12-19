@@ -2,10 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Users, Plus, ShieldOff, Trash2, Video, List, CheckCircle, AlertCircle, 
     Award, Settings, ArrowLeft, XCircle, RefreshCw, Shield, AlertTriangle, 
-    LayoutDashboard, BookOpen, UserCog
-} from 'lucide-react';
-import { api } from '../../services/api';
-
+    LayoutDashboard, BookOpen, UserCog, Ban, Clock, ChevronDown, ChevronUp
+} 
 // ====================================================================
 // --- Toast Notification Component ---
 // ====================================================================

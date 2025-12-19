@@ -223,9 +223,8 @@ const WelcomePage = ({ onGetStarted }) => {
           <p className="text-card-muted text-lg">Start earning in 3 simple steps</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-cyan rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
+       <div className="text-center">
+            <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
               1
             </div>
             <h3 className="text-xl font-bold text-yellow-400 mb-3">Sign Up Free</h3>
@@ -241,7 +240,7 @@ const WelcomePage = ({ onGetStarted }) => {
           </div>
 
           <div className="text-center">
-            <div className="w-20 h-20 bg-orange rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
+            <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
               3
             </div>
             <h3 className="text-xl font-bold text-yellow-400 mb-3">Earn Rewards</h3>

@@ -26,104 +26,67 @@ const ThemeToggle = ({ onClick, isDark }) => (
 );
 
 // --- Animated Loading Screen Component ---
-const LoadingScreen = () => (
-    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-primary-navy via-dark-bg to-primary-navy">
-        <div className="relative flex flex-col items-center">
-            {/* Rotating Spinner Ring */}
-            <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-32 h-32 border-4 border-transparent border-t-cyan border-r-yellow-400 rounded-full animate-spin-slow"></div>
-            </div>
-            
-            {/* Second Spinner Ring (opposite direction) */}
-            <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-40 h-40 border-4 border-transparent border-b-orange border-l-cyan-light rounded-full animate-spin-reverse-slow"></div>
+const LoadingScreen = () => {
+    const [progress, setProgress] = useState(0);
+
+    useEffect(() => {
+        // Simulate loading progress
+        const interval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                }
+                return prev + 2;
+            });
+        }, 50); // Smooth progress animation
+
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="flex flex-col items-center justify-center h-screen bg-primary-navy relative overflow-hidden">
+            {/* Breathing Glow Effect Behind Logo */}
+            <div className="absolute">
+                <div className="w-48 h-48 bg-cyan rounded-full blur-3xl opacity-20 animate-breathe"></div>
             </div>
 
-            {/* Logo with Pulse Animation */}
-            <div className="relative z-10 animate-pulse-slower">
+            {/* Logo */}
+            <div className="relative z-10">
                 <img 
                     src={readsLogo} 
                     alt="$READS Logo" 
-                    className="w-24 h-24 object-contain drop-shadow-2xl"
+                    className="w-32 h-32 object-contain"
                 />
             </div>
 
-            {/* Loading Text */}
-            <div className="mt-8 flex flex-col items-center space-y-2">
-                <h2 className="text-2xl font-bold text-cyan animate-fade-in">
-                    $READS
-                </h2>
-                <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-cyan rounded-full animate-bounce-slow" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce-slow" style={{ animationDelay: '200ms' }}></span>
-                    <span className="w-2 h-2 bg-orange rounded-full animate-bounce-slow" style={{ animationDelay: '400ms' }}></span>
-                </div>
+            {/* Elegant Progress Line at Bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-navy/50">
+                <div 
+                    className="h-full bg-gradient-to-r from-cyan via-yellow-400 to-orange transition-all duration-300 ease-out"
+                    style={{ width: `${progress}%` }}
+                ></div>
             </div>
+
+            <style jsx>{`
+                @keyframes breathe {
+                    0%, 100% {
+                        opacity: 0.1;
+                        transform: scale(1);
+                    }
+                    50% {
+                        opacity: 0.3;
+                        transform: scale(1.2);
+                    }
+                }
+
+                .animate-breathe {
+                    animation: breathe 4s ease-in-out infinite;
+                }
+            `}</style>
         </div>
-
-        <style jsx>{`
-            @keyframes spin-reverse-slow {
-                from {
-                    transform: rotate(360deg);
-                }
-                to {
-                    transform: rotate(0deg);
-                }
-            }
-
-            @keyframes pulse-slower {
-                0%, 100% {
-                    opacity: 1;
-                    transform: scale(1);
-                }
-                50% {
-                    opacity: 0.8;
-                    transform: scale(1.05);
-                }
-            }
-
-            @keyframes fade-in {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            @keyframes bounce-slow {
-                0%, 100% {
-                    transform: translateY(0);
-                }
-                50% {
-                    transform: translateY(-8px);
-                }
-            }
-
-            .animate-spin-slow {
-                animation: spin 4s linear infinite;
-            }
-
-            .animate-spin-reverse-slow {
-                animation: spin-reverse-slow 5s linear infinite;
-            }
-
-            .animate-pulse-slower {
-                animation: pulse-slower 4s ease-in-out infinite;
-            }
-
-            .animate-fade-in {
-                animation: fade-in 1.2s ease-out;
-            }
-
-            .animate-bounce-slow {
-                animation: bounce-slow 1.5s ease-in-out infinite;
-            }
-        `}</style>
-    </div>
-);
+    );
+};
 
 // --- Main Application Component ---
 export default function App() {

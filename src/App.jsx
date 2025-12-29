@@ -31,16 +31,16 @@ const LoadingScreen = () => (
         <div className="relative flex flex-col items-center">
             {/* Rotating Spinner Ring */}
             <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-32 h-32 border-4 border-transparent border-t-cyan border-r-yellow-400 rounded-full animate-spin"></div>
+                <div className="w-32 h-32 border-4 border-transparent border-t-cyan border-r-yellow-400 rounded-full animate-spin-slow"></div>
             </div>
             
             {/* Second Spinner Ring (opposite direction) */}
             <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-40 h-40 border-4 border-transparent border-b-orange border-l-cyan-light rounded-full animate-spin-reverse"></div>
+                <div className="w-40 h-40 border-4 border-transparent border-b-orange border-l-cyan-light rounded-full animate-spin-reverse-slow"></div>
             </div>
 
             {/* Logo with Pulse Animation */}
-            <div className="relative z-10 animate-pulse-slow">
+            <div className="relative z-10 animate-pulse-slower">
                 <img 
                     src={readsLogo} 
                     alt="$READS Logo" 
@@ -54,15 +54,15 @@ const LoadingScreen = () => (
                     $READS
                 </h2>
                 <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-orange rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    <span className="w-2 h-2 bg-cyan rounded-full animate-bounce-slow" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce-slow" style={{ animationDelay: '200ms' }}></span>
+                    <span className="w-2 h-2 bg-orange rounded-full animate-bounce-slow" style={{ animationDelay: '400ms' }}></span>
                 </div>
             </div>
         </div>
 
         <style jsx>{`
-            @keyframes spin-reverse {
+            @keyframes spin-reverse-slow {
                 from {
                     transform: rotate(360deg);
                 }
@@ -71,7 +71,7 @@ const LoadingScreen = () => (
                 }
             }
 
-            @keyframes pulse-slow {
+            @keyframes pulse-slower {
                 0%, 100% {
                     opacity: 1;
                     transform: scale(1);
@@ -93,16 +93,33 @@ const LoadingScreen = () => (
                 }
             }
 
-            .animate-spin-reverse {
-                animation: spin-reverse 2s linear infinite;
+            @keyframes bounce-slow {
+                0%, 100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-8px);
+                }
             }
 
-            .animate-pulse-slow {
-                animation: pulse-slow 2s ease-in-out infinite;
+            .animate-spin-slow {
+                animation: spin 4s linear infinite;
+            }
+
+            .animate-spin-reverse-slow {
+                animation: spin-reverse-slow 5s linear infinite;
+            }
+
+            .animate-pulse-slower {
+                animation: pulse-slower 4s ease-in-out infinite;
             }
 
             .animate-fade-in {
-                animation: fade-in 0.8s ease-out;
+                animation: fade-in 1.2s ease-out;
+            }
+
+            .animate-bounce-slow {
+                animation: bounce-slow 1.5s ease-in-out infinite;
             }
         `}</style>
     </div>

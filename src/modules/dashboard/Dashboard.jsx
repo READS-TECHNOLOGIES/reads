@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PlayCircle, Wallet, Award, ArrowRight, TrendingUp, BookOpen } from 'lucide-react';
 import { api } from '../../services/api';
@@ -94,7 +95,7 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
           <Award size={24} className="mr-2 text-orange" />
           Recent Activity
         </h3>
-        
+
         {/* Activity Card */}
         <div className="bg-light-card dark:bg-dark-card rounded-2xl border-2 border-cyan shadow-lg overflow-hidden">
           <div className="p-5 flex justify-between items-center hover:bg-black/20 transition-colors">
@@ -113,7 +114,7 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
             </div>
           </div>
         </div>
-        
+
         <button 
           onClick={() => onNavigate('wallet')} 
           className='mt-4 text-sm text-cyan hover:text-primary-cyan-dark flex items-center gap-1 font-semibold transition-colors'
@@ -128,7 +129,7 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
           <BookOpen size={24} className="mr-2 text-cyan" />
           Continue Learning
         </h3>
-        
+
         <div className="bg-light-card dark:bg-dark-card rounded-2xl border-2 border-cyan p-6 shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -139,7 +140,7 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
               {Math.round((stats.quizzes_taken / (stats.lessons_completed || 1)) * 100)}%
             </div>
           </div>
-          
+
           {/* Progress Bar */}
           <div className="w-full bg-black/30 rounded-full h-3 overflow-hidden border border-cyan-light">
             <div 
@@ -147,7 +148,7 @@ const Dashboard = ({ user, wallet, onNavigate }) => {
               style={{ width: `${Math.min(stats.lessons_completed * 10, 100)}%` }}
             />
           </div>
-          
+
           <button 
             onClick={() => onNavigate('learn', 'categories')}
             className="mt-4 w-full py-3 bg-cyan text-white font-bold rounded-xl hover:bg-primary-cyan-dark transition-all border-2 border-cyan shadow-lg hover:shadow-cyan/50"

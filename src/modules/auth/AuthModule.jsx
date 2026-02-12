@@ -25,7 +25,7 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
         onNavigate('login');
       } else if (view === 'forgot-password') {
         await api.auth.forgotPassword(formData.email);
-        setError('✅ Password reset link sent to your email!. If you did not see an email, check your spam or junk folder');
+        setError('✅ Password reset link sent to your email! If you did not see an email, check your spam or junk folder.');
         setTimeout(() => onNavigate('login'), 3000);
       }
     } catch (err) {
@@ -39,112 +39,205 @@ const AuthModule = ({ view, onLoginSuccess, onNavigate }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const isSuccess = error.startsWith('✅') || error.startsWith('Account created');
+
   return (
-    <div className="w-full max-w-md bg-primary-navy dark:bg-dark-card rounded-2xl shadow-2xl p-8 border border-cyan/30">
-      {/* Logo and Title */}
-      <div className="text-center mb-8">
-        <img 
-          src={readsLogo} 
-          alt="$READS Logo" 
-          className="w-20 h-20 mx-auto mb-4 rounded-xl object-contain"
-        />
-        <h1 className="text-3xl font-bold text-card-light mb-2">
-          {view === 'login' ? 'Welcome Back' : view === 'signup' ? 'Create Account' : 'Reset Password'}
-        </h1>
-        <p className="text-card-muted">
-          {view === 'login' 
-            ? 'Sign in to continue learning' 
-            : view === 'signup' 
-            ? 'Join $READS and start earning'
-            : 'Enter your email to reset your password'}
-        </p>
-      </div>
+    /* ── Page wrapper ── */
+    <div className="min-h-screen bg-reads-cream flex items-center justify-center px-4 py-8">
 
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 p-3 bg-orange/20 border border-orange/40 rounded-xl text-orange text-sm">
-          {error}
-        </div>
-      )}
+      {/* ── Phone shell / outer card ── */}
+      <div className="w-full max-w-sm">
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {view === 'signup' && (
-          <div>
-            <label className="block text-card-light font-medium mb-2">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl bg-dark-card-light border border-cyan/20 text-card-light placeholder-card-muted focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/50"
-              placeholder="John Doe"
-              required
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="block text-card-light font-medium mb-2">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl bg-dark-card-light border border-cyan/20 text-card-light placeholder-card-muted focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/50"
-            placeholder="you@example.com"
-            required
+        {/* ── Brand header ── */}
+        <div className="flex items-center gap-3 mb-8 px-1">
+          <img
+            src={readsLogo}
+            alt="$READS Logo"
+            className="w-16 h-16 rounded-full object-contain shadow-reads-gold"
           />
+          <div>
+            <h1 className="font-display text-4xl font-black text-reads-navy leading-none tracking-tight">
+              $READS
+            </h1>
+            <p className="text-reads-navy-soft text-sm font-medium mt-0.5 tracking-wide">
+              Learn. Earn. Excel.
+            </p>
+          </div>
         </div>
 
-        {view !== 'forgot-password' && (
-          <div>
-            <label className="block text-card-light font-medium mb-2">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl bg-dark-card-light border border-cyan/20 text-card-light placeholder-card-muted focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/50"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-        )}
+        {/* ── Form card ── */}
+        <div className="bg-white rounded-3xl shadow-reads-card px-7 pt-8 pb-7">
 
-        {view === 'login' && (
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => onNavigate('forgot-password')}
-              className="text-cyan hover:text-cyan-dark transition-colors text-sm font-medium"
+          {/* Card title */}
+          <h2 className="font-display text-2xl font-bold text-reads-navy text-center mb-6">
+            {view === 'login'
+              ? 'Login'
+              : view === 'signup'
+              ? 'Create Account'
+              : 'Reset Password'}
+          </h2>
+
+          {/* ── Error / success message ── */}
+          {error && (
+            <div
+              className={`mb-5 p-3 rounded-xl text-sm font-medium ${
+                isSuccess
+                  ? 'bg-reads-green-bg text-reads-green border border-reads-green/30'
+                  : 'bg-reads-red-bg text-reads-red border border-reads-red/30'
+              }`}
             >
-              Forgot password?
+              {error}
+            </div>
+          )}
+
+          {/* ── Form ── */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Full name — signup only */}
+            {view === 'signup' && (
+              <div>
+                <label className="block text-reads-navy text-sm font-medium mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  required
+                  className="w-full h-13 px-4 py-3 rounded-xl bg-white border border-reads-gold-mid
+                             text-reads-navy placeholder-reads-muted-light text-sm
+                             focus:outline-none focus:border-reads-gold focus:ring-2 focus:ring-reads-gold/20
+                             transition-colors"
+                />
+              </div>
+            )}
+
+            {/* Email */}
+            <div>
+              <label className="block text-reads-navy text-sm font-medium mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="you@example.com"
+                required
+                className="w-full h-13 px-4 py-3 rounded-xl bg-white border border-reads-gold-mid
+                           text-reads-navy placeholder-reads-muted-light text-sm
+                           focus:outline-none focus:border-reads-gold focus:ring-2 focus:ring-reads-gold/20
+                           transition-colors"
+              />
+            </div>
+
+            {/* Password — login & signup only */}
+            {view !== 'forgot-password' && (
+              <div>
+                <label className="block text-reads-navy text-sm font-medium mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  className="w-full h-13 px-4 py-3 rounded-xl bg-white border border-reads-gold-mid
+                             text-reads-navy placeholder-reads-muted-light text-sm
+                             focus:outline-none focus:border-reads-gold focus:ring-2 focus:ring-reads-gold/20
+                             transition-colors"
+                />
+              </div>
+            )}
+
+            {/* Forgot password link */}
+            {view === 'login' && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('forgot-password')}
+                  className="text-reads-teal hover:text-reads-teal-light text-sm font-medium transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl font-bold text-reads-navy text-base
+                         bg-gradient-to-r from-reads-gold-light via-reads-gold to-reads-gold-dark
+                         shadow-reads-gold hover:brightness-105 hover:-translate-y-0.5
+                         active:translate-y-0 active:brightness-95
+                         disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
+                         transition-all duration-150"
+            >
+              {loading
+                ? 'Please wait...'
+                : view === 'login'
+                ? 'Login'
+                : view === 'signup'
+                ? 'Create Account'
+                : 'Send Reset Link'}
             </button>
-          </div>
-        )}
+          </form>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 rounded-xl bg-yellow-500/20 text-yellow-400 font-bold hover:bg-yellow-500/30 transition-colors border border-yellow-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Please wait...' : view === 'login' ? 'Sign In' : view === 'signup' ? 'Create Account' : 'Send Reset Link'}
-        </button>
-      </form>
+          {/* ── Sign up / sign in toggle ── */}
+          <p className="mt-5 text-center text-sm text-reads-muted">
+            {view === 'login' ? (
+              <>
+                Don't have an account?{' '}
+                <button
+                  onClick={() => onNavigate('signup')}
+                  className="text-reads-teal hover:text-reads-teal-light font-semibold transition-colors"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : view === 'signup' ? (
+              <>
+                Already have an account?{' '}
+                <button
+                  onClick={() => onNavigate('login')}
+                  className="text-reads-teal hover:text-reads-teal-light font-semibold transition-colors"
+                >
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => onNavigate('login')}
+                className="text-reads-teal hover:text-reads-teal-light font-semibold transition-colors"
+              >
+                Back to Sign in
+              </button>
+            )}
+          </p>
+        </div>
 
-      {/* Toggle View */}
-      <div className="mt-6 text-center">
-        <button
-          onClick={() => onNavigate(view === 'login' ? 'signup' : 'login')}
-          className="text-cyan hover:text-cyan-dark transition-colors font-medium"
-        >
-          {view === 'login' 
-            ? "Don't have an account? Sign up" 
-            : view === 'signup'
-            ? 'Already have an account? Sign in'
-            : 'Back to Sign in'}
-        </button>
+        {/* ── Footer links ── */}
+        <div className="mt-5 text-center text-sm text-reads-muted">
+          <button
+            onClick={() => onNavigate('home')}
+            className="hover:text-reads-navy transition-colors"
+          >
+            Back to Home
+          </button>
+          <span className="mx-2 text-reads-muted-light">|</span>
+          <button
+            onClick={() => onNavigate('privacy')}
+            className="hover:text-reads-navy transition-colors"
+          >
+            Privacy Policy
+          </button>
+        </div>
+
       </div>
     </div>
   );

@@ -8,50 +8,92 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Custom color palette from the mockup design
+        // ── Existing tokens (unchanged) ──────────────────────────────
         primary: {
-          // Light mode
-          gray: '#F5F7FA',        // Light background
-          navy: '#2D3250',        // Dark navy for cards
-          'navy-dark': '#1F2937', // Darker navy
-          cyan: '#00D9D9',        // Bright cyan/teal accent
-          'cyan-dark': '#00B8B8', // Darker cyan
-          orange: '#FF9F43',      // Orange for rewards
+          gray: '#F5F7FA',
+          navy: '#2D3250',
+          'navy-dark': '#1F2937',
+          cyan: '#00D9D9',
+          'cyan-dark': '#00B8B8',
+          orange: '#FF9F43',
           'orange-light': '#FFB976',
         },
         dark: {
-          // Dark mode
-          bg: '#1A1D2E',          // Very dark background
-          card: '#2D3250',        // Navy cards
-          'card-light': '#3A3F5C', // Lighter navy for hover
-          cyan: '#00D9D9',        // Bright cyan accent
-          'cyan-glow': '#00FFFF', // Glowing cyan
-          orange: '#FF9F43',      // Orange for rewards
-        }
-      },
-      backgroundColor: {
-        // Light theme backgrounds
-        'light-general': '#F5F7FA',  // Light gray background
-        'light-card': '#2D3250',     // Dark navy cards
+          bg: '#1A1D2E',
+          card: '#2D3250',
+          'card-light': '#3A3F5C',
+          cyan: '#00D9D9',
+          'cyan-glow': '#00FFFF',
+          orange: '#FF9F43',
+        },
 
-        // Dark theme backgrounds
-        'dark-general': '#1A1D2E',   // Very dark navy/black
-        'dark-card': '#2D3250',      // Navy cards (same as light for consistency)
+        // ── $READS brand tokens (new) ────────────────────────────────
+        reads: {
+          // Backgrounds
+          cream:       '#F5F0E8',   // Login page background
+          'cream-mid': '#EDE7D9',   // Subtle card bg tint
+
+          // Navy (brand text & headings)
+          navy:        '#0D1F3C',
+          'navy-soft': '#1A3358',
+
+          // Gold (coin, input borders, login button)
+          'gold-light': '#F5CF7A',
+          gold:         '#E8B84B',
+          'gold-mid':   '#D4A017',
+          'gold-dark':  '#B8860B',
+
+          // Green (primary CTA across the whole app)
+          green:        '#16A34A',
+          'green-light':'#22C55E',
+          'green-bg':   '#DCFCE7',  // Light green tint for badges/chips
+
+          // Teal (secondary links: forgot password, sign up)
+          teal:         '#0D7A6E',
+          'teal-light': '#10A394',
+
+          // Semantic
+          red:          '#EF4444',  // Wrong answers, negative transactions
+          'red-bg':     '#FEE2E2',  // Light red tint
+          muted:        '#6B7280',  // Timestamps, secondary text
+          'muted-light':'#9CA3AF',
+        },
+      },
+
+      // ── Existing overrides (unchanged) ───────────────────────────
+      backgroundColor: {
+        'light-general': '#F5F7FA',
+        'light-card':    '#2D3250',
+        'dark-general':  '#1A1D2E',
+        'dark-card':     '#2D3250',
       },
       textColor: {
-        'card-light': '#FFFFFF',     // White text on cards
-        'card-muted': '#9CA3AF',     // Muted gray text
-        'cyan': '#00D9D9',           // Cyan text
-        'orange': '#FF9F43',         // Orange text
+        'card-light': '#FFFFFF',
+        'card-muted': '#9CA3AF',
+        'cyan':       '#00D9D9',
+        'orange':     '#FF9F43',
       },
       borderColor: {
-        'cyan': '#00D9D9',           // Cyan borders
-        'cyan-light': '#4DE8E8',     // Light cyan
-        'orange': '#FF9F43',         // Orange borders
+        'cyan':       '#00D9D9',
+        'cyan-light': '#4DE8E8',
+        'orange':     '#FF9F43',
       },
       ringColor: {
         'cyan': '#00D9D9',
-      }
+      },
+
+      // ── New font families ─────────────────────────────────────────
+      fontFamily: {
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans:    ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+
+      // ── Box shadows for cards & buttons ──────────────────────────
+      boxShadow: {
+        'reads-card':   '0 4px 24px rgba(13,31,60,0.08), 0 1px 4px rgba(13,31,60,0.04)',
+        'reads-gold':   '0 4px 16px rgba(180,130,10,0.35)',
+        'reads-green':  '0 4px 16px rgba(22,163,74,0.30)',
+      },
     },
   },
   plugins: [],

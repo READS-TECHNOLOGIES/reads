@@ -669,3 +669,110 @@ export const fetchProtectedData = async (endpoint, token, options = {}) => {
 
     return res.json();
 };
+// ═══════════════════════════════════════════════════════════════════════════
+// Add these methods to your api.admin object in src/services/api.js
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Send notification to users
+sendNotification: async (payload) => {
+    // payload structure:
+    // {
+    //   title: string,
+    //   message: string,
+    //   type: 'info' | 'success' | 'warning' | 'error',
+    //   recipient_type: 'all' | 'specific',
+    //   recipient_ids: number[] | null  (only needed if recipient_type is 'specific')
+    // }
+    const response = await fetch(`${API_BASE_URL}/admin/notifications/send`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Failed to send notification');
+    return response.json();
+},
+
+// Get recent notifications (optional - for showing notification history)
+getRecentNotifications: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/admin/notifications/recent?limit=${limit}`, {
+        headers: {
+            'Authorization': `Bearer ${getToken()}`
+        }
+    });
+    if (!response.ok) throw new Error('Failed to fetch recent notifications');
+    return response.json();
+},
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Backend API Endpoints Required
+// ═══════════════════════════════════════════════════════════════════════════
+
+/*
+POST /api/admin/notifications/send
+Authorization: Bearer {admin_token}
+Body:
+{
+  "title": "New Lessons Added!",
+  "message": "Check out the new JAMB Mathematics lessons we just uploaded.",
+  "type": "info",
+  "recipient_type": "all",
+  "recipient_ids": null
+}
+
+Response: 200 OK
+{
+  "success": true,
+  "sent_count": 150,
+  "message": "Notification sent successfully"
+}
+
+---
+
+GET /api/admin/notifications/recent?limit=10
+Authorization: Bearer {admin_token}
+
+Response: 200 OK
+[
+  {
+    "id": 1,
+    "title": "New Lessons Added!",
+    "message": "Check out the new JAMB Mathematics lessons...",
+    "type": "info",
+    "sent_to": "all",
+    "recipient_count": 150,
+    "created_at": "2025-02-16T10:30:00Z"
+  },
+  ...
+]
+*/
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Database Schema Suggestions
+// ═══════════════════════════════════════════════════════════════════════════
+
+/*
+notifications table:
+- id (primary key)
+- title (varchar)
+- message (text)
+- type (enum: 'info', 'success', 'warning', 'error')
+- recipient_type (enum: 'all', 'specific')
+- created_at (timestamp)
+- created_by_admin_id (foreign key -> users.id)
+
+notification_recipients table (for specific notifications):
+- id (primary key)
+- notification_id (foreign key -> notifications.id)
+- user_id (foreign key -> users.id)
+- is_read (boolean, default false)
+- read_at (timestamp, nullable)
+
+This allows you to:
+1. Store all notifications sent
+2. Track which users received specific notifications
+3. Track read/unread status for each user
+4. Display notification history in the admin panel
+*/

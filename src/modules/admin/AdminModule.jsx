@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { LayoutDashboard, BookOpen, Plus, Users, AlertTriangle, X, CheckCircle, XCircle } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Plus, Users, AlertTriangle, Bell, X, CheckCircle, XCircle } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import LessonCreateForm from './LessonCreateForm';
 import ManageContent from './ManageContent';
 import UserManagement from './UserManagement';
 import SuspiciousAttemptsMonitor from './SuspiciousAttemptsMonitor';
+import NotificationManager from './NotificationManager';
 
 // ── Toast notification ────────────────────────────────────────────────────────
 const Toast = ({ toast, onDismiss }) => {
@@ -27,11 +28,12 @@ const Toast = ({ toast, onDismiss }) => {
 
 // ── Tab configuration ─────────────────────────────────────────────────────────
 const TABS = [
-    { id: 'dashboard', label: 'Dashboard',        icon: LayoutDashboard },
-    { id: 'create',    label: 'Create Lesson',    icon: Plus             },
-    { id: 'manage',    label: 'Manage Content',   icon: BookOpen         },
-    { id: 'users',     label: 'Users',            icon: Users            },
-    { id: 'security',  label: 'Security',         icon: AlertTriangle    },
+    { id: 'dashboard',      label: 'Dashboard',        icon: LayoutDashboard },
+    { id: 'create',         label: 'Create Lesson',    icon: Plus             },
+    { id: 'manage',         label: 'Manage Content',   icon: BookOpen         },
+    { id: 'users',          label: 'Users',            icon: Users            },
+    { id: 'notifications',  label: 'Notifications',    icon: Bell             },
+    { id: 'security',       label: 'Security',         icon: AlertTriangle    },
 ];
 
 // ── Main AdminModule ──────────────────────────────────────────────────────────
@@ -46,12 +48,13 @@ const AdminModule = ({ currentUserId }) => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'dashboard': return <AdminDashboard onToast={showToast} />;
-            case 'create':    return <LessonCreateForm onToast={showToast} onSuccess={() => setActiveTab('manage')} />;
-            case 'manage':    return <ManageContent onToast={showToast} />;
-            case 'users':     return <UserManagement onToast={showToast} currentUserId={currentUserId} />;
-            case 'security':  return <SuspiciousAttemptsMonitor onToast={showToast} />;
-            default:          return null;
+            case 'dashboard':      return <AdminDashboard onToast={showToast} />;
+            case 'create':         return <LessonCreateForm onToast={showToast} onSuccess={() => setActiveTab('manage')} />;
+            case 'manage':         return <ManageContent onToast={showToast} />;
+            case 'users':          return <UserManagement onToast={showToast} currentUserId={currentUserId} />;
+            case 'notifications':  return <NotificationManager onToast={showToast} />;
+            case 'security':       return <SuspiciousAttemptsMonitor onToast={showToast} />;
+            default:               return null;
         }
     };
 

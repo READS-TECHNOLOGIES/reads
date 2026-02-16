@@ -558,44 +558,33 @@ export const api = {
             return res.json();
         },
 // ═══════════════════════════════════════════════════════════════════════════
-// INSTRUCTIONS: Add these methods to your api.admin object in src/services/api.js
-// 
-// Find the section that looks like:
-//   admin: {
-//     getUsers: async () => { ... },
-//     promoteUser: async () => { ... },
-//     ...
-//   }
-//
-// Add these TWO new methods INSIDE that admin object, making sure to include
-// a comma after the previous method.
-// ═══════════════════════════════════════════════════════════════════════════
+ ═══════════════════════════════════════════════════════════════════════════
 
-    // Send notification to users
+   // Send notification to users
     sendNotification: async (payload) => {
-        const response = await fetch(`${API_BASE_URL}/admin/notifications/send`, {
+        const response = await fetch(`${API_URL}/admin/notifications/send`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getToken()}`
-            },
+            headers: getAuthHeader(),
             body: JSON.stringify(payload)
         });
-        if (!response.ok) throw new Error('Failed to send notification');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Failed to send notification' }));
+            throw new Error(error.message || 'Failed to send notification');
+        }
         return response.json();
     },
 
     // Get recent notifications (optional - for showing notification history)
     getRecentNotifications: async (limit = 10) => {
-        const response = await fetch(`${API_BASE_URL}/admin/notifications/recent?limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+        const response = await fetch(`${API_URL}/admin/notifications/recent?limit=${limit}`, {
+            headers: getAuthHeader()
         });
-        if (!response.ok) throw new Error('Failed to fetch recent notifications');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Failed to fetch recent notifications' }));
+            throw new Error(error.message || 'Failed to fetch recent notifications');
+        }
         return response.json();
     },
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Backend API Endpoints Required
 // ═══════════════════════════════════════════════════════════════════════════

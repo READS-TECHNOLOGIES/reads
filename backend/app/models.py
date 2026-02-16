@@ -192,3 +192,32 @@ class Wallet(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", back_populates="wallet")
+
+class Notification(db.Model):
+    """Stores sent notifications"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(20), nullable=False, default='info')
+    recipient_type = db.Column(db.String(20), nullable=False, default='all')
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    recipients = db.relationship('NotificationRecipient', backref='notification', lazy=True, cascade='all, delete-orphan')
+
+class NotificationRecipient(db.Model):
+    """Tracks which users received notifications"""
+    __tablename__ = 'notification_recipients'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    notification_id = db.Column(db.Integer, db.ForeignKey('notifications.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    __table_args__ = (
+        db.UniqueConstraint('notification_id', 'user_id', name='unique_notification_recipient'),
+    )

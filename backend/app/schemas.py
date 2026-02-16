@@ -235,3 +235,11 @@ class SuspiciousAttempt(BaseModel):
 
     class Config:
         from_attributes = True
+
+notification_schema = {
+    'title': {'type': 'string', 'required': True},
+    'message': {'type': 'string', 'required': True},
+    'type': {'type': 'string', 'allowed': ['info', 'success', 'warning', 'error']},
+    'recipient_type': {'type': 'string', 'allowed': ['all', 'specific']},
+    'recipient_ids': {'type': 'list', 'schema': {'type': 'integer'}}
+}

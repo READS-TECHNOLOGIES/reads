@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, TrendingUp, Award, ArrowRight, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, TrendingUp, Award, ArrowRight, Sparkles } from 'lucide-react';
 import readsLogo from '../../../assets/reads-logo.png';
 
 const WelcomePage = ({ onGetStarted }) => {
@@ -14,7 +14,7 @@ const WelcomePage = ({ onGetStarted }) => {
     ],
     [
       "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&h=400&fit=crop",
-      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-503676260728-1c00da094a0b?w=400&h=400&fit=crop",
       "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop",
       "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&h=400&fit=crop"
     ],
@@ -29,57 +29,58 @@ const WelcomePage = ({ onGetStarted }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageSet((prev) => (prev + 1) % imageSets.length);
-    }, 4000); // Change images every 4 seconds
-
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-navy via-dark-card to-primary-navy-dark overflow-hidden">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-gradient-to-br from-white via-green-50/30 to-orange-50/30">
+      {/* ── Hero Section ── */}
       <div className="relative">
         {/* Navigation */}
-        <nav className="container mx-auto px-6 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <img src={readsLogo} alt="$READS Logo" className="w-10 h-10 rounded-lg object-contain" />
-            <span className="text-2xl font-bold text-card-light">$READS</span>
+        <nav className="container mx-auto px-6 py-5 flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <img src={readsLogo} alt="$READS" className="w-9 h-9 rounded-lg object-contain" />
+            <span className="text-xl font-black text-gray-900 tracking-tight">$READS</span>
           </div>
           <button
             onClick={onGetStarted}
-            className="px-6 py-2 rounded-xl bg-yellow-500/20 text-yellow-400 font-bold hover:bg-yellow-500/30 transition-colors border border-yellow-500/40"
+            className="px-5 py-2.5 rounded-xl bg-[#16a34a] text-white text-sm font-bold hover:bg-green-700 transition-all shadow-sm"
           >
             Sign In
           </button>
         </nav>
 
         {/* Hero Content */}
-        <div className="container mx-auto px-6 py-20 md:py-32">
+        <div className="container mx-auto px-6 py-16 md:py-24">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
-            <div className="space-y-8">
-              <div className="inline-block px-4 py-2 bg-cyan/20 rounded-full border border-cyan/40">
-                <span className="text-cyan text-sm font-semibold">🎓 Learn • Earn • Grow</span>
+            <div className="space-y-7">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full">
+                <Sparkles size={14} className="text-[#16a34a]" />
+                <span className="text-[#16a34a] text-sm font-bold">Learn • Earn • Excel</span>
               </div>
-              
-              <h1 className="text-5xl md:text-6xl font-bold text-yellow-400 leading-tight">
-                Master Your Exams,
-                <span className="text-card-light"> Earn Rewards</span>
+
+              <h1 className="text-5xl md:text-6xl font-black text-gray-900 leading-[1.1]">
+                Master Your Exams,{' '}
+                <span className="text-[#16a34a]">Earn Rewards</span>
               </h1>
-              
-              <p className="text-xl text-card-muted leading-relaxed">
+
+              <p className="text-lg text-gray-600 leading-relaxed">
                 Study for JAMB, WAEC, IELTS & SAT while earning $READS tokens. 
                 The more you learn, the more you earn!
               </p>
 
-              <div className="flex flex-wrap gap-4">
-                 <button
-            onClick={onGetStarted}
-            className="px-12 py-5 rounded-xl bg-primary-navy text-yellow-400 font-bold hover:bg-primary-navy-dark transition-all shadow-2xl text-lg"
-          >
-            Get Started
-<ArrowRight size={20} />
-          </button>
+              <div className="flex flex-wrap gap-4 pt-2">
                 <button
-                  className="px-8 py-4 rounded-xl bg-transparent text-card-light font-bold hover:bg-white/10 transition-colors border-2 border-card-light/30"
+                  onClick={onGetStarted}
+                  className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#16a34a] text-white font-bold hover:bg-green-700 transition-all shadow-lg hover:shadow-xl text-base"
+                >
+                  Get Started Free
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  className="px-8 py-4 rounded-xl bg-white text-gray-700 font-bold hover:bg-gray-50 transition-all border-2 border-gray-200"
                   onClick={() => window.open('https://readstechnet.vercel.app', '_blank')}
                 >
                   Learn More
@@ -87,83 +88,64 @@ const WelcomePage = ({ onGetStarted }) => {
               </div>
 
               {/* Stats */}
-              <div className="flex gap-8 pt-8">
+              <div className="flex gap-8 pt-6">
                 <div>
-                  <div className="text-3xl font-bold text-yellow-400">10K+</div>
-                  <div className="text-card-muted text-sm">Active Learners</div>
+                  <div className="text-3xl font-black text-[#16a34a]">10K+</div>
+                  <div className="text-gray-500 text-sm">Active Learners</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-cyan">50K+</div>
-                  <div className="text-card-muted text-sm">Lessons Completed</div>
+                  <div className="text-3xl font-black text-[#f97316]">50K+</div>
+                  <div className="text-gray-500 text-sm">Lessons Completed</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-orange">1M+</div>
-                  <div className="text-card-muted text-sm">Tokens Earned</div>
+                  <div className="text-3xl font-black text-blue-600">1M+</div>
+                  <div className="text-gray-500 text-sm">Tokens Earned</div>
                 </div>
               </div>
             </div>
 
-            {/* Right Content - Student Images with Sliding Animation */}
-            <div className="relative overflow-hidden">
+            {/* Right Content - Student Images */}
+            <div className="relative">
               <div className="grid grid-cols-2 gap-4">
-                {/* Student Image 1 - Slide from left */}
-                <div 
-                  key={`img1-${currentImageSet}`}
-                  className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl animate-slide-in-left"
-                >
-                  <img 
-                    src={imageSets[currentImageSet][0]} 
-                    alt="Students studying together" 
-                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-                
-                {/* Student Image 2 - Slide from right */}
-                <div 
-                  key={`img2-${currentImageSet}`}
-                  className="rounded-2xl overflow-hidden border-4 border-yellow-400/30 shadow-2xl mt-8 animate-slide-in-right"
-                >
-                  <img 
-                    src={imageSets[currentImageSet][1]} 
-                    alt="Student celebrating success" 
-                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-                
-                {/* Student Image 3 - Fade in */}
-                <div 
-                  key={`img3-${currentImageSet}`}
-                  className="rounded-2xl overflow-hidden border-4 border-orange/30 shadow-2xl -mt-4 animate-fade-in"
-                >
-                  <img 
-                    src={imageSets[currentImageSet][2]} 
-                    alt="Group study session" 
-                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-                
-                {/* Student Image 4 - Slide from bottom */}
-                <div 
-                  key={`img4-${currentImageSet}`}
-                  className="rounded-2xl overflow-hidden border-4 border-cyan/30 shadow-2xl animate-slide-in-bottom"
-                >
-                  <img 
-                    src={imageSets[currentImageSet][3]} 
-                    alt="Student using laptop" 
-                    className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
+                {[0, 1, 2, 3].map((idx) => {
+                  const animations = [
+                    'animate-slide-in-left',
+                    'animate-slide-in-right',
+                    'animate-fade-in',
+                    'animate-slide-in-bottom'
+                  ];
+                  const borders = [
+                    'border-[#16a34a]',
+                    'border-[#f97316]',
+                    'border-blue-500',
+                    'border-[#16a34a]'
+                  ];
+                  const spacing = idx === 1 ? 'mt-8' : idx === 2 ? '-mt-4' : '';
+
+                  return (
+                    <div
+                      key={`img${idx}-${currentImageSet}`}
+                      className={`rounded-2xl overflow-hidden border-4 ${borders[idx]} shadow-xl ${spacing} ${animations[idx]}`}
+                    >
+                      <img
+                        src={imageSets[currentImageSet][idx]}
+                        alt="Students learning"
+                        className="w-full h-64 object-cover transform hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Floating Badge */}
-              <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-primary-navy border-4 border-yellow-400 rounded-2xl p-4 shadow-2xl">
+              <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-white border-4 border-[#f97316] rounded-2xl p-4 shadow-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <Award className="text-primary-navy" size={24} />
+                  <div className="w-12 h-12 bg-[#f97316] rounded-full flex items-center justify-center flex-shrink-0">
+                    <Award className="text-white" size={22} />
                   </div>
                   <div>
-                    <div className="text-yellow-400 font-bold">Earn While You Learn</div>
-                    <div className="text-card-muted text-sm">100 tokens per quiz passed</div>
+                    <div className="text-[#f97316] font-bold text-sm">Earn While You Learn</div>
+                    <div className="text-gray-500 text-xs">100 tokens per quiz passed</div>
                   </div>
                 </div>
               </div>
@@ -172,110 +154,107 @@ const WelcomePage = ({ onGetStarted }) => {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="bg-dark-card py-20 border-t border-cyan/20">
+      {/* ── Features Section ── */}
+      <div className="bg-white py-20 border-t border-gray-100">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-yellow-400 mb-4">Why Choose $READS?</h2>
-            <p className="text-card-muted text-lg">Everything you need to ace your exams and earn rewards</p>
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-black text-gray-900 mb-3">Why Choose $READS?</h2>
+            <p className="text-gray-600 text-lg">Everything you need to ace your exams and earn rewards</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="bg-primary-navy rounded-2xl p-8 border border-cyan/20 hover:border-cyan/50 transition-all">
-              <div className="w-16 h-16 bg-cyan/20 rounded-xl flex items-center justify-center mb-6">
-                <BookOpen className="text-cyan" size={32} />
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: BookOpen,
+                iconBg: 'bg-green-50',
+                iconColor: 'text-[#16a34a]',
+                border: 'border-green-100',
+                title: 'Quality Content',
+                desc: 'Access comprehensive study materials for JAMB, WAEC, IELTS, and SAT prepared by expert educators.'
+              },
+              {
+                icon: TrendingUp,
+                iconBg: 'bg-orange-50',
+                iconColor: 'text-[#f97316]',
+                border: 'border-orange-100',
+                title: 'Earn Tokens',
+                desc: 'Complete lessons and pass quizzes to earn $READS tokens. Your knowledge has real value!'
+              },
+              {
+                icon: Award,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                border: 'border-blue-100',
+                title: 'Track Progress',
+                desc: 'Monitor your learning journey with detailed analytics and performance tracking.'
+              }
+            ].map(({ icon: Icon, iconBg, iconColor, border, title, desc }) => (
+              <div
+                key={title}
+                className={`bg-white rounded-2xl p-8 border-2 ${border} hover:shadow-lg transition-all`}
+              >
+                <div className={`w-14 h-14 ${iconBg} rounded-xl flex items-center justify-center mb-5`}>
+                  <Icon className={iconColor} size={28} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm">{desc}</p>
               </div>
-              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Quality Content</h3>
-              <p className="text-card-muted leading-relaxed">
-                Access comprehensive study materials for JAMB, WAEC, IELTS, and SAT prepared by expert educators.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="bg-primary-navy rounded-2xl p-8 border border-yellow-400/20 hover:border-yellow-400/50 transition-all">
-              <div className="w-16 h-16 bg-yellow-400/20 rounded-xl flex items-center justify-center mb-6">
-                <TrendingUp className="text-yellow-400" size={32} />
-              </div>
-              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Earn Tokens</h3>
-              <p className="text-card-muted leading-relaxed">
-                Complete lessons and pass quizzes to earn $READS tokens. Your knowledge has real value!
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="bg-primary-navy rounded-2xl p-8 border border-orange/20 hover:border-orange/50 transition-all">
-              <div className="w-16 h-16 bg-orange/20 rounded-xl flex items-center justify-center mb-6">
-                <Award className="text-orange" size={32} />
-              </div>
-              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Track Progress</h3>
-              <p className="text-card-muted leading-relaxed">
-                Monitor your learning journey with detailed analytics and performance tracking.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* How It Works Section */}
+      {/* ── How It Works Section ── */}
       <div className="container mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-yellow-400 mb-4">How It Works</h2>
-          <p className="text-card-muted text-lg">Start earning in 3 simple steps</p>
+        <div className="text-center mb-14">
+          <h2 className="text-4xl font-black text-gray-900 mb-3">How It Works</h2>
+          <p className="text-gray-600 text-lg">Start earning in 3 simple steps</p>
         </div>
 
-       <div className="text-center">
-            <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
-              1
+        <div className="grid md:grid-cols-3 gap-10 max-w-4xl mx-auto">
+          {[
+            { num: 1, title: 'Sign Up Free', desc: 'Create your account and get 50 welcome tokens instantly', color: 'bg-[#16a34a]' },
+            { num: 2, title: 'Study & Practice', desc: 'Access lessons and take practice quizzes on your schedule', color: 'bg-[#f97316]' },
+            { num: 3, title: 'Earn Rewards', desc: 'Pass quizzes and earn 100 tokens for each success', color: 'bg-blue-600' }
+          ].map(({ num, title, desc, color }) => (
+            <div key={num} className="text-center">
+              <div className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-black text-white shadow-lg`}>
+                {num}
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
+              <p className="text-gray-600 text-sm">{desc}</p>
             </div>
-            <h3 className="text-xl font-bold text-yellow-400 mb-3">Sign Up Free</h3>
-            <p className="text-card-muted">Create your account and get 50 welcome tokens instantly</p>
-          </div>
-
-          <div className="text-center">
-            <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
-              2
-            </div>
-            <h3 className="text-xl font-bold text-yellow-400 mb-3">Study & Practice</h3>
-            <p className="text-card-muted">Access lessons and take practice quizzes on your schedule</p>
-          </div>
-
-          <div className="text-center">
-            <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl font-bold text-primary-navy">
-              3
-            </div>
-            <h3 className="text-xl font-bold text-yellow-400 mb-3">Earn Rewards</h3>
-            <p className="text-card-muted">Pass quizzes and earn 100 tokens for each success</p>
-          </div>
+          ))}
         </div>
+      </div>
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-cyan via-cyan-dark to-cyan py-20">
+      {/* ── CTA Section ── */}
+      <div className="bg-gradient-to-br from-[#16a34a] to-green-700 py-20">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-yellow-400 mb-6">
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-5">
             Ready to Start Learning?
           </h2>
-          <p className="text-card-light text-xl mb-8">
+          <p className="text-green-50 text-xl mb-8 max-w-2xl mx-auto">
             Join thousands of students earning while they study
           </p>
           <button
             onClick={onGetStarted}
-            className="px-12 py-5 rounded-xl bg-primary-navy text-yellow-400 font-bold hover:bg-primary-navy-dark transition-all shadow-2xl text-lg"
+            className="px-10 py-4 rounded-xl bg-white text-[#16a34a] font-bold hover:bg-green-50 transition-all shadow-2xl text-lg"
           >
             Create Free Account
           </button>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-primary-navy-dark py-12 border-t border-cyan/20">
+      {/* ── Footer ── */}
+      <footer className="bg-gray-900 py-12 border-t border-gray-800">
         <div className="container mx-auto px-6 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <img src={readsLogo} alt="$READS Logo" className="w-8 h-8 rounded-lg object-contain" />
-            <span className="text-xl font-bold text-card-light">$READS</span>
+          <div className="flex items-center justify-center gap-2.5 mb-4">
+            <img src={readsLogo} alt="$READS" className="w-7 h-7 rounded-lg object-contain" />
+            <span className="text-lg font-black text-white">$READS</span>
           </div>
-          <p className="text-card-muted text-sm">© 2025 READS Technologies. All rights reserved.</p>
-          <p className="text-card-muted text-sm mt-2">Learn to Earn • Empower Your Future</p>
+          <p className="text-gray-400 text-sm">© 2026 READS Technologies. All rights reserved.</p>
+          <p className="text-gray-500 text-sm mt-2">Learn to Earn • Empower Your Future</p>
         </div>
       </footer>
     </div>

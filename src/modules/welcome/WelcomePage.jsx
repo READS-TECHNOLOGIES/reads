@@ -145,7 +145,7 @@ const WelcomePage = ({ onGetStarted }) => {
                   </div>
                   <div>
                     <div className="text-[#f97316] font-bold text-sm">Earn While You Learn</div>
-                    <div className="text-gray-500 text-xs">100 tokens per quiz passed</div>
+           
                   </div>
                 </div>
               </div>
@@ -215,7 +215,7 @@ const WelcomePage = ({ onGetStarted }) => {
           {[
             { num: 1, title: 'Sign Up Free', desc: 'Create your account and get 50 welcome tokens instantly', color: 'bg-[#16a34a]' },
             { num: 2, title: 'Study & Practice', desc: 'Access lessons and take practice quizzes on your schedule', color: 'bg-[#f97316]' },
-            { num: 3, title: 'Earn Rewards', desc: 'Pass quizzes and earn 100 tokens for each success', color: 'bg-blue-600' }
+            { num: 3, title: 'Earn Rewards', desc: 'Pass quizzes and earn tokens for each success', color: 'bg-blue-600' }
           ].map(({ num, title, desc, color }) => (
             <div key={num} className="text-center">
               <div className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-black text-white shadow-lg`}>

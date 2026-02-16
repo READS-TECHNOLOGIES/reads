@@ -13,6 +13,18 @@ import json
 from .app import models, schemas, auth, database, email_service
 from .app import cardano_utils
 from app.models import User, Notification, NotificationRecipient
+from flask import Flask, jsonify
+import traceback
+app = Flask(__name__)
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    print(f"ERROR: {str(e)}")
+    print(traceback.format_exc())
+    return jsonify({
+        'message': 'Internal server error',
+        'error': str(e)
+    }), 500
 
 print("Attempting to create database tables...")
 try:

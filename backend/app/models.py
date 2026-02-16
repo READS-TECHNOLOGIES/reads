@@ -193,31 +193,54 @@ class Wallet(Base):
 
     user = relationship("User", back_populates="wallet")
 
-class Notification(db.Model):
+# ══════════════════════════════════════════════════════════════════════════
+# REPLACE the notification models at the end of your models.py with these:
+# ══════════════════════════════════════════════════════════════════════════
+
+class Notification(Base):
     """Stores sent notifications"""
     __tablename__ = 'notifications'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    type = db.Column(db.String(20), nullable=False, default='info')
-    recipient_type = db.Column(db.String(20), nullable=False, default='all')
-    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    
-    recipients = db.relationship('NotificationRecipient', backref='notification', lazy=True, cascade='all, delete-orphan')
 
-class NotificationRecipient(db.Model):
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(20), nullable=False, default='info')
+    recipient_type = Column(String(20), nullable=False, default='all')
+    created_by_admin_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    recipients = relationship('NotificationRecipient', back_populates='notification', cascade='all, delete-orphan')
+    created_by = relationship('User', foreign_keys=[created_by_admin_id])
+
+
+class NotificationRecipient(Base):
     """Tracks which users received notifications"""
     __tablename__ = 'notification_recipients'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    notification_id = db.Column(db.Integer, db.ForeignKey('notifications.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    is_read = db.Column(db.Boolean, default=False, nullable=False)
-    read_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notification_id = Column(UUID(as_uuid=True), ForeignKey('notifications.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     __table_args__ = (
-        db.UniqueConstraint('notification_id', 'user_id', name='unique_notification_recipient'),
+        UniqueConstraint('notification_id', 'user_id', name='unique_notification_recipient'),
     )
+
+    # Relationships
+    notification = relationship('Notification', back_populates='recipients')
+    user = relationship('User', foreign_keys=[user_id])
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# KEY CHANGES:
+# ══════════════════════════════════════════════════════════════════════════
+# 1. Changed from db.Model to Base (matches your existing models)
+# 2. Changed from db.Column to Column (matches your existing models)
+# 3. Changed all IDs to UUID(as_uuid=True) instead of Integer
+# 4. Changed foreign keys to UUID(as_uuid=True) to match users table
+# 5. Used server_default=func.now() for timestamps (matches your pattern)
+# 6. Fixed relationships to use back_populates instead of backref
+# ══════════════════════════════════════════════════════════════════════════

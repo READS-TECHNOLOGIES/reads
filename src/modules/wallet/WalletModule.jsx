@@ -1,254 +1,307 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
-import { Wallet, History, Copy, Check, Eye, EyeOff, RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  RefreshCw, AlertCircle, Send, Download, History,
+  Copy, Check, Eye, EyeOff, TrendingUp, TrendingDown, ArrowUpRight
+} from 'lucide-react';
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+const Spinner = () => (
+  <div className="flex flex-col items-center justify-center p-16 gap-3">
+    <RefreshCw size={28} className="animate-spin text-reads-green" />
+    <p className="text-reads-muted text-sm">Loading wallet...</p>
+  </div>
+);
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const today    = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString())     return `Today, ${time}`;
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+};
+
+const txIcon = (type, amount) => {
+  const positive = amount >= 0;
+  if (type === 'referral') return { icon: ArrowUpRight, bg: 'bg-blue-50', color: 'text-blue-500' };
+  if (!positive)           return { icon: TrendingDown,  bg: 'bg-reads-red-bg', color: 'text-reads-red' };
+  return                          { icon: TrendingUp,    bg: 'bg-reads-green-bg', color: 'text-reads-green' };
+};
+
+const txLabel = (item) => {
+  if (item.lesson_title) return item.lesson_title;
+  const map = {
+    quiz:     'Earned from Quiz',
+    lesson:   'Lesson Completion Reward',
+    referral: 'Referral Bonus',
+    streak:   'Daily Streak Bonus',
+    payment:  'Exam Payment',
+    purchase: 'Premium Study Material',
+    challenge:'Weekly Challenge Reward',
+  };
+  return map[item.type] || 'Reward';
+};
+
+// ── Main Component ───────────────────────────────────────────────────
 
 const WalletModule = ({ user, balance, onUpdateBalance }) => {
-    const initialAddress = user?.cardano_address || null;
+  const [currentBalance, setCurrentBalance] = useState(balance || 0);
+  const [history, setHistory]               = useState([]);
+  const [summary, setSummary]               = useState({ earned: 0, spent: 0, quizzes: 0 });
+  const [walletAddress, setWalletAddress]   = useState(user?.cardano_address || null);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState(null);
+  const [copied, setCopied]                 = useState(false);
+  const [showAddress, setShowAddress]       = useState(false);
+  const [activeTab, setActiveTab]           = useState('all');
 
-    const [currentBalance, setCurrentBalance] = useState(balance || 0);
-    const [history, setHistory] = useState([]);
-    const [summary, setSummary] = useState({});
-    const [walletAddress, setWalletAddress] = useState(initialAddress);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [copied, setCopied] = useState(false);
-    const [showFullAddress, setShowFullAddress] = useState(false);
+  const fetchData = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) { setError('Please log in to view your wallet.'); setLoading(false); return; }
 
-    const fetchData = useCallback(async () => {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-            setLoading(false);
-            setError("Authentication token not found. Please login.");
-            return;
-        }
+    setLoading(true);
+    setError(null);
 
-        setLoading(true);
-        setError(null);
+    try {
+      const [balanceData, historyData, profileData] = await Promise.all([
+        api.wallet.getBalance(),
+        api.wallet.getHistory(),
+        api.auth.me(),
+      ]);
 
-        try {
-            const [balanceData, historyData, profileData] = await Promise.all([
-                api.wallet.getBalance(),
-                api.wallet.getHistory(),
-                api.auth.me()
-            ]);
+      const newBalance = typeof balanceData === 'number' ? balanceData : (balanceData?.token_balance || 0);
+      setCurrentBalance(newBalance);
+      if (onUpdateBalance) onUpdateBalance(newBalance);
 
-            const newBalance = typeof balanceData === 'number' ? balanceData : (balanceData?.token_balance || 0);
-            setCurrentBalance(newBalance);
-            if (onUpdateBalance) {
-                onUpdateBalance(newBalance);
-            }
+      const txList = historyData || [];
+      setHistory(txList);
 
-            setHistory(historyData || []);
+      const earned  = txList.reduce((s, i) => s + (i.tokens_earned > 0 ? i.tokens_earned : 0), 0);
+      const spent   = txList.reduce((s, i) => s + (i.tokens_earned < 0 ? Math.abs(i.tokens_earned) : 0), 0);
+      const quizzes = txList.filter(i => i.type === 'quiz').length;
+      setSummary({ earned, spent, quizzes });
 
-            const totalEarned = (historyData || []).reduce((sum, item) => sum + (item.tokens_earned || 0), 0);
-            const quizzesPassed = (historyData || []).filter(item => item.type === 'quiz').length;
-            setSummary({
-                total_tokens_earned: totalEarned,
-                total_quizzes_passed: quizzesPassed
-            });
+      if (profileData?.cardano_address) setWalletAddress(profileData.cardano_address);
 
-            if (profileData?.cardano_address) {
-                setWalletAddress(profileData.cardano_address);
-            } else {
-                console.warn("Profile loaded but cardano_address is missing:", profileData);
-                if (!walletAddress) {
-                    setError("Cardano address not found. Please contact support.");
-                }
-            }
-
-        } catch (err) {
-            console.error("Wallet data fetching failed:", err);
-            if (err.message === 'AuthenticationRequired') {
-                setError("Session expired. Please re-login.");
-            } else {
-                setError(err.message || "Failed to load wallet data.");
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, [onUpdateBalance, walletAddress]);
-
-    useEffect(() => {
-        if (user) {
-            fetchData();
-        } else {
-            setLoading(false);
-            setError("User not logged in.");
-        }
-    }, [user, fetchData]);
-
-    const handleCopy = () => {
-        if (walletAddress) {
-            navigator.clipboard.writeText(walletAddress);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
-    const toggleAddressVisibility = () => {
-        setShowFullAddress(!showFullAddress);
-    };
-
-    const formatAddress = (address) => {
-        if (!address) return 'No address available';
-        if (showFullAddress) return address;
-        return `${address.slice(0, 10)}...${address.slice(-6)}`;
-    };
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center p-8">
-                <RefreshCw size={32} className="animate-spin text-primary-cyan dark:text-dark-cyan" />
-            </div>
-        );
+    } catch (err) {
+      setError(err.message === 'AuthenticationRequired'
+        ? 'Session expired. Please log in again.'
+        : err.message || 'Failed to load wallet data.');
+    } finally {
+      setLoading(false);
     }
+  }, [onUpdateBalance]);
 
-    if (error) {
-        return (
-            <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-orange p-4 rounded-xl">
-                <div className="flex items-start">
-                    <AlertCircle size={20} className="text-primary-orange dark:text-dark-orange mr-3 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 dark:text-white">Error Loading Wallet</h3>
-                        <p className="text-sm text-gray-600 dark:text-card-muted mt-1">{error}</p>
-                        <button 
-                            onClick={fetchData}
-                            className="mt-3 text-sm text-primary-cyan dark:text-dark-cyan hover:text-primary-cyan-dark font-medium flex items-center"
-                        >
-                            <RefreshCw size={16} className="mr-1" />
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+  useEffect(() => {
+    if (user) fetchData();
+    else { setError('User not logged in.'); setLoading(false); }
+  }, [user, fetchData]);
 
-    return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Title */}
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
-                <Wallet size={32} className="mr-3 text-primary-cyan dark:text-dark-cyan" />
-                Your $READS Wallet
-            </h2>
+  const handleCopy = () => {
+    if (!walletAddress) return;
+    navigator.clipboard.writeText(walletAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-            {/* CARDANO WALLET ADDRESS SECTION */}
-            <div className="p-6 border-2 border-cyan rounded-xl bg-light-card dark:bg-dark-card shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white flex items-center">
-                        🔗 Cardano Wallet Address
-                    </h3>
-                    <button
-                        onClick={toggleAddressVisibility}
-                        disabled={!walletAddress}
-                        className="p-2 rounded-full hover:bg-primary-navy-dark dark:hover:bg-dark-card-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={showFullAddress ? "Hide full address" : "Show full address"}
-                    >
-                        {showFullAddress ? <EyeOff size={20} className="text-cyan" /> : <Eye size={20} className="text-cyan" />}
-                    </button>
-                </div>
+  const formatAddress = (addr) => {
+    if (!addr) return 'No address linked';
+    return showAddress ? addr : `${addr.slice(0, 12)}...${addr.slice(-6)}`;
+  };
 
-                <div className="flex items-center justify-between bg-black/20 dark:bg-black/30 p-4 rounded-lg border border-cyan-light">
-                    <p className={`font-mono flex-grow mr-4 ${showFullAddress ? 'break-all text-xs md:text-sm' : 'truncate text-sm'} text-white`}>
-                        {formatAddress(walletAddress)}
-                    </p>
-                    <button
-                        onClick={handleCopy}
-                        disabled={!walletAddress}
-                        className={`min-w-[100px] px-4 py-2 text-sm font-semibold rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center border-2 ${
-                            copied
-                            ? 'bg-cyan border-cyan text-white scale-105'
-                            : 'bg-transparent border-cyan text-cyan hover:bg-cyan hover:text-white'
-                        }`}
-                    >
-                        {copied ? (
-                            <>
-                                <Check size={16} className="mr-1" />
-                                Copied!
-                            </>
-                        ) : (
-                            <>
-                                <Copy size={16} className="mr-1" />
-                                Copy
-                            </>
-                        )}
-                    </button>
-                </div>
+  const filteredHistory = history.filter(item => {
+    if (activeTab === 'all')     return true;
+    if (activeTab === 'earned')  return (item.tokens_earned || 0) > 0;
+    if (activeTab === 'spent')   return (item.tokens_earned || 0) < 0;
+    return true;
+  });
 
-                <p className="text-xs text-card-muted mt-3">
-                    💡 Use this address to receive ADA and NFTs on the Cardano Preprod Testnet
-                </p>
-            </div>
+  // ── States ──
+  if (loading) return <Spinner />;
 
-            {/* BALANCE SECTION */}
-            <div className="flex justify-between items-center p-6 bg-light-card dark:bg-dark-card rounded-xl shadow-md border-2 border-cyan">
-                <h3 className="text-xl font-semibold text-white">
-                    $READS Balance
-                </h3>
-                <p className="text-4xl font-extrabold text-orange">
-                    {currentBalance.toLocaleString()}
-                </p>
-            </div>
-
-            {/* REWARD HISTORY */}
-            <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-md border-2 border-cyan p-6">
-                <h3 className="text-2xl font-bold text-white mb-4 flex items-center">
-                    <History size={24} className="mr-2 text-cyan" />
-                    Reward History
-                </h3>
-
-                {/* Summary Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-4 bg-black/20 dark:bg-black/30 rounded-lg border border-cyan-light">
-                        <p className="text-sm text-card-muted">Total Earned</p>
-                        <p className="text-2xl font-bold text-orange">
-                            {summary.total_tokens_earned ? summary.total_tokens_earned.toLocaleString() : 0} $READS
-                        </p>
-                    </div>
-                    <div className="p-4 bg-black/20 dark:bg-black/30 rounded-lg border border-cyan-light">
-                        <p className="text-sm text-card-muted">Quizzes Passed</p>
-                        <p className="text-2xl font-bold text-cyan">
-                            {summary.total_quizzes_passed || 0}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Transaction History List */}
-                <div className="border-2 border-cyan-light rounded-lg overflow-hidden max-h-96 overflow-y-auto bg-black/10 dark:bg-black/20">
-                    {history.length === 0 ? (
-                        <div className="p-8 text-center text-card-muted">
-                            <History size={48} className="mx-auto mb-3 opacity-30" />
-                            <p>No transaction history yet.</p>
-                            <p className="text-sm mt-1">Complete quizzes to earn $READS tokens!</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-cyan-light/20">
-                            {history.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="p-4 hover:bg-black/20 dark:hover:bg-black/30 transition-colors flex justify-between items-center"
-                                >
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-white">
-                                            {item.lesson_title || 'Reward'}
-                                        </p>
-                                        <p className="text-sm text-card-muted">
-                                            {item.type || 'Unknown'} • {new Date(item.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-lg font-bold text-orange">
-                                            +{item.tokens_earned} $READS
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+  if (error) return (
+    <div className="mx-4 mt-6 bg-red-50 border border-red-200 rounded-2xl p-5">
+      <div className="flex items-start gap-3">
+        <AlertCircle size={20} className="text-reads-red flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h3 className="text-reads-navy font-bold text-sm">Error Loading Wallet</h3>
+          <p className="text-reads-muted text-xs mt-1">{error}</p>
+          <button onClick={fetchData} className="mt-3 text-reads-green text-xs font-semibold flex items-center gap-1 hover:text-reads-green-light transition-colors">
+            <RefreshCw size={13} /> Retry
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="animate-fade-in pb-8">
+
+      {/* ── Page title ── */}
+      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+        <h2 className="text-reads-navy font-bold text-base">Wallet</h2>
+        <button onClick={fetchData} className="text-reads-muted hover:text-reads-green transition-colors">
+          <RefreshCw size={18} />
+        </button>
+      </div>
+
+      {/* ── Balance card ── */}
+      <div className="mx-4 bg-reads-green-bg rounded-2xl p-5 shadow-reads-card border border-reads-green/20 mb-4">
+        <p className="text-reads-muted text-xs font-medium mb-1">Your Balance</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-reads-navy text-3xl font-black tracking-tight">
+              {currentBalance.toLocaleString()}{' '}
+              <span className="text-reads-gold-dark font-black">$READS</span>
+            </h3>
+            <p className="text-reads-muted text-xs mt-1">Updated just now</p>
+          </div>
+          {/* Coin icon */}
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-reads-gold-light via-reads-gold to-reads-gold-dark shadow-reads-gold flex items-center justify-center flex-shrink-0">
+            <span className="text-reads-navy font-black text-xl">$</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Quick actions ── */}
+      <div className="mx-4 grid grid-cols-3 gap-3 mb-4">
+        {[
+          { icon: Send,     label: 'Send Tokens', color: 'text-reads-green', bg: 'bg-reads-green-bg' },
+          { icon: Download, label: 'Receive',     color: 'text-reads-green', bg: 'bg-reads-green-bg' },
+          { icon: History,  label: 'History',     color: 'text-reads-green', bg: 'bg-reads-green-bg' },
+        ].map(({ icon: Icon, label, color, bg }) => (
+          <button
+            key={label}
+            className="bg-white rounded-2xl p-4 shadow-reads-card flex flex-col items-center gap-2 hover:shadow-reads-green transition-shadow group"
+          >
+            <div className={`w-11 h-11 rounded-full ${bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <Icon size={20} className={color} />
+            </div>
+            <span className="text-reads-navy text-xs font-semibold text-center leading-tight">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Summary stats ── */}
+      <div className="mx-4 grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-white rounded-2xl p-4 shadow-reads-card">
+          <p className="text-reads-muted text-xs mb-1">Total Earned</p>
+          <p className="text-reads-green font-black text-lg">+{summary.earned.toLocaleString()}</p>
+          <p className="text-reads-muted text-xs">$READS</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-reads-card">
+          <p className="text-reads-muted text-xs mb-1">Quizzes Passed</p>
+          <p className="text-reads-navy font-black text-lg">{summary.quizzes}</p>
+          <p className="text-reads-muted text-xs">completed</p>
+        </div>
+      </div>
+
+      {/* ── Cardano address card ── */}
+      {walletAddress && (
+        <div className="mx-4 bg-white rounded-2xl p-4 shadow-reads-card mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-reads-navy font-bold text-sm">🔗 Cardano Address</p>
+            <button
+              onClick={() => setShowAddress(v => !v)}
+              className="text-reads-muted hover:text-reads-navy transition-colors"
+            >
+              {showAddress ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-2 border border-gray-100">
+            <p className={`font-mono text-reads-navy-soft flex-1 min-w-0 ${showAddress ? 'break-all text-xs' : 'truncate text-xs'}`}>
+              {formatAddress(walletAddress)}
+            </p>
+            <button
+              onClick={handleCopy}
+              className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+                ${copied
+                  ? 'bg-reads-green-bg border-reads-green text-reads-green'
+                  : 'bg-white border-gray-200 text-reads-muted hover:border-reads-green hover:text-reads-green'}`}
+            >
+              {copied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+            </button>
+          </div>
+          <p className="text-reads-muted text-xs mt-2">
+            💡 Use this address to receive ADA and NFTs on the Cardano Preprod Testnet
+          </p>
+        </div>
+      )}
+
+      {/* ── Recent Transactions ── */}
+      <div className="mx-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-reads-navy font-bold text-base">Recent Transactions</h3>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 mb-3">
+          {['all', 'earned', 'spent'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition-colors
+                ${activeTab === tab
+                  ? 'bg-reads-green text-white'
+                  : 'bg-white text-reads-muted border border-gray-200'}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Transaction list */}
+        <div className="bg-white rounded-2xl shadow-reads-card overflow-hidden">
+          {filteredHistory.length === 0 ? (
+            <div className="p-10 text-center">
+              <History size={36} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-reads-muted text-sm font-medium">No transactions yet</p>
+              <p className="text-reads-muted text-xs mt-1">Complete quizzes to earn $READS!</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {filteredHistory.map((item, idx) => {
+                const amount   = item.tokens_earned || 0;
+                const positive = amount >= 0;
+                const { icon: Icon, bg, color } = txIcon(item.type, amount);
+
+                return (
+                  <div key={item.id || idx} className="flex items-center gap-3 px-4 py-3.5">
+                    {/* Icon */}
+                    <div className={`w-9 h-9 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
+                      <Icon size={16} className={color} />
+                    </div>
+                    {/* Label + date */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-reads-navy text-sm font-semibold truncate">{txLabel(item)}</p>
+                      <p className="text-reads-muted text-xs">{formatDate(item.created_at)}</p>
+                    </div>
+                    {/* Amount */}
+                    <p className={`text-sm font-bold flex-shrink-0 ${positive ? 'text-reads-green' : 'text-reads-red'}`}>
+                      {positive ? '+' : ''}{amount} $READS
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Disclaimer */}
+        <div className="mt-4 flex items-start gap-2 px-1">
+          <span className="text-reads-muted text-xs mt-0.5">ℹ️</span>
+          <p className="text-reads-muted text-xs leading-relaxed">
+            1 $READS = Market-based token. Value varies.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  );
 };
 
 export default WalletModule;

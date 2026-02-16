@@ -972,6 +972,84 @@ def get_suspicious_attempts(
     
     return results
 
+@app.route('/api/admin/notifications/send', methods=['POST'])
+@admin_required  # Use your existing admin auth decorator
+def send_notification():
+    try:
+        data = request.get_json()
+        
+        if not data.get('title') or not data.get('message'):
+            return jsonify({'message': 'Title and message are required'}), 400
+        
+        # Create notification
+        notification = Notification(
+            title=data.get('title'),
+            message=data.get('message'),
+            type=data.get('type', 'info'),
+            recipient_type=data.get('recipient_type', 'all'),
+            created_by_admin_id=g.user_id,  # Adjust based on your auth
+            created_at=datetime.utcnow()
+        )
+        db.session.add(notification)
+        db.session.flush()
+        
+        # Get recipients
+        if data.get('recipient_type') == 'all':
+            users = User.query.all()
+            recipient_count = len(users)
+            for user in users:
+                notif_recipient = NotificationRecipient(
+                    notification_id=notification.id,
+                    user_id=user.id,
+                    is_read=False
+                )
+                db.session.add(notif_recipient)
+        else:
+            recipient_ids = data.get('recipient_ids', [])
+            recipient_count = len(recipient_ids)
+            for user_id in recipient_ids:
+                notif_recipient = NotificationRecipient(
+                    notification_id=notification.id,
+                    user_id=user_id,
+                    is_read=False
+                )
+                db.session.add(notif_recipient)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'sent_count': recipient_count,
+            'message': f'Notification sent to {recipient_count} user(s)'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/admin/notifications/recent', methods=['GET'])
+@admin_required
+def get_recent_notifications():
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        notifications = Notification.query.order_by(Notification.created_at.desc()).limit(limit).all()
+        
+        result = []
+        for notif in notifications:
+            recipient_count = NotificationRecipient.query.filter_by(notification_id=notif.id).count()
+            result.append({
+                'id': notif.id,
+                'title': notif.title,
+                'message': notif.message,
+                'type': notif.type,
+                'sent_to': notif.recipient_type,
+                'recipient_count': recipient_count,
+                'created_at': notif.created_at.isoformat()
+            })
+        
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
 # ----------------------------------------------------
 # 4. ADMIN ENDPOINTS (Original)
 # ----------------------------------------------------

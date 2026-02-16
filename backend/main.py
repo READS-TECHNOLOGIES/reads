@@ -12,6 +12,7 @@ import json
 
 from .app import models, schemas, auth, database, email_service
 from .app import cardano_utils
+from app.models import User, Notification, NotificationRecipient
 
 print("Attempting to create database tables...")
 try:

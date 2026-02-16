@@ -202,9 +202,6 @@ export default function App() {
 
         {view === 'learn' && (
           <LearnModule
-            subView={subView}
-            activeData={navPayload}
-            onNavigate={handleNavigate}
             onUpdateWallet={setTokenBalance}
           />
         )}

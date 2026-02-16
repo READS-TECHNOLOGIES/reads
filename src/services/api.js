@@ -1,9 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
-// Vercel routes our /api path to the Python backend function
-const API_URL = "/api"; 
+const API_URL = "/api";
 
-// Function to get the Authorization header
 const getAuthHeader = () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -15,7 +13,6 @@ const getAuthHeader = () => {
     };
 };
 
-// Helper function to process failed responses aggressively
 const handleFailedResponse = async (res, action) => {
     let errorDetail = `Failed to ${action} (Status: ${res.status})`;
 
@@ -28,7 +25,6 @@ const handleFailedResponse = async (res, action) => {
         throw new Error('QuizAlreadyCompleted');
     }
 
-    // 🆕 Handle rate limit errors
     if (res.status === 429) {
         try {
             const data = await res.json();
@@ -51,7 +47,6 @@ const handleFailedResponse = async (res, action) => {
 }
 
 export const api = {
-    // --- AUTH ---
     auth: {
         login: async (email, password) => {
             const res = await fetch(`${API_URL}/auth/login`, {
@@ -68,6 +63,7 @@ export const api = {
             localStorage.setItem('access_token', data.access_token);
             return data; 
         },
+
         signup: async (name, email, password) => {
             const res = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
@@ -83,6 +79,7 @@ export const api = {
             localStorage.setItem('access_token', data.access_token);
             return data;
         },
+
         forgotPassword: async (email) => {
             const res = await fetch(`${API_URL}/auth/request-password-reset`, {
                 method: 'POST',
@@ -94,9 +91,9 @@ export const api = {
                 await handleFailedResponse(res, 'Send Password Reset Email');
             }
 
-            const data = await res.json();
-            return data;
+            return res.json();
         },
+
         resetPassword: async (token, newPassword) => {
             const res = await fetch(`${API_URL}/auth/reset-password`, {
                 method: 'POST',
@@ -108,9 +105,9 @@ export const api = {
                 await handleFailedResponse(res, 'Reset Password');
             }
 
-            const data = await res.json();
-            return data;
+            return res.json();
         },
+
         me: async () => {
             const token = localStorage.getItem('access_token');
             if (!token) return null;
@@ -132,6 +129,7 @@ export const api = {
                 joined: data.created_at,
             };
         },
+
         deleteAccount: async () => {
             const res = await fetch(`${API_URL}/user/delete`, {
                 method: 'DELETE',
@@ -142,56 +140,36 @@ export const api = {
                 await handleFailedResponse(res, 'Delete Account');
             }
 
-            // Clear local storage on successful deletion
             localStorage.removeItem('access_token');
-            
-            const data = await res.json();
-            return data;
+            return res.json();
         },
     },
 
-    // --- PROFILE ---
     profile: {
         getStats: async () => {
             const res = await fetch(`${API_URL}/user/stats`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch User Stats');
-                } catch (e) {
-                    console.error("Non-fatal error fetching user stats:", e.message);
-                }
+                console.error("Error fetching user stats");
                 return { lessons_completed: 0, quizzes_taken: 0 };
             }
-
-            const data = await res.json();
-            return data;
+            return res.json();
         },
+
         getLeaderboard: async (limit = 10) => {
             const res = await fetch(`${API_URL}/leaderboard?limit=${limit}`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch Leaderboard');
-                } catch (e) {
-                    console.error("Non-fatal error fetching leaderboard:", e.message);
-                }
+                console.error("Error fetching leaderboard");
                 return [];
             }
-
-            const data = await res.json();
-            return data;
+            return res.json();
         },
     },
 
-    // --- LEARN ---
     learn: {
         getCategories: async () => {
             const res = await fetch(`${API_URL}/lessons/categories`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch Categories');
-                } catch (e) {
-                    console.error("Non-fatal error fetching categories:", e.message);
-                }
+                console.error("Error fetching categories");
                 return [];
             }
 
@@ -203,14 +181,11 @@ export const api = {
                 color: cat.category === 'JAMB' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
             }));
         },
+
         getLessons: async (categoryName) => {
             const res = await fetch(`${API_URL}/lessons/category/${categoryName}`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch Lessons');
-                } catch (e) {
-                    console.error("Non-fatal error fetching lessons:", e.message);
-                }
+                console.error("Error fetching lessons");
                 return [];
             }
 
@@ -220,6 +195,7 @@ export const api = {
                 duration: '15 min'
             }));
         },
+
         getLessonDetail: async (lessonId) => {
             const res = await fetch(`${API_URL}/lessons/${lessonId}`, { headers: getAuthHeader() });
             if (!res.ok) {
@@ -228,7 +204,6 @@ export const api = {
             return res.json();
         },
 
-        // 🆕 ANTI-CHEAT: Track lesson read time
         trackLessonTime: async (lessonId, readTimeSeconds) => {
             const res = await fetch(`${API_URL}/lessons/${lessonId}/track-time`, {
                 method: 'POST',
@@ -238,51 +213,41 @@ export const api = {
                     read_time_seconds: readTimeSeconds 
                 })
             });
-            
+
             if (!res.ok) {
-                console.warn('Failed to track lesson time (non-fatal)');
+                console.warn('Failed to track lesson time');
             }
-            
+
             return res.ok;
         },
 
-        // 🆕 ANTI-CHEAT: Check if user can take quiz
         checkQuizStatus: async (lessonId) => {
             const res = await fetch(`${API_URL}/quiz/${lessonId}/status`, {
                 headers: getAuthHeader()
             });
-            
+
             if (!res.ok) {
                 await handleFailedResponse(res, 'Check Quiz Status');
             }
-            
+
             return res.json();
         },
 
-        // 🆕 ANTI-CHEAT: Start new quiz attempt with random questions
         startQuizAttempt: async (lessonId) => {
             const res = await fetch(`${API_URL}/quiz/start`, {
                 method: 'POST',
                 headers: getAuthHeader(),
                 body: JSON.stringify({ lesson_id: lessonId })
             });
-            
+
             if (!res.ok) {
                 await handleFailedResponse(res, 'Start Quiz Attempt');
             }
-            
+
             return res.json();
         },
 
-        // 🆕 ANTI-CHEAT: Flag quiz for security violations
         flagQuizAttempt: async (lessonId, attemptId, violationType, violationDetails = null) => {
-            console.log('🚨 Flagging quiz attempt:', { 
-                lessonId, 
-                attemptId, 
-                violationType, 
-                violationDetails 
-            });
-            
             try {
                 const res = await fetch(`${API_URL}/quiz/flag`, {
                     method: 'POST',
@@ -296,137 +261,67 @@ export const api = {
                 });
 
                 if (!res.ok) {
-                    console.warn('Failed to flag quiz (non-fatal)');
+                    console.warn('Failed to flag quiz');
                     return { success: false };
                 }
 
                 const data = await res.json();
-                console.log('✅ Quiz flagged successfully:', data);
                 return { success: true, data };
-                
+
             } catch (error) {
-                console.error('❌ Error flagging quiz:', error);
+                console.error('Error flagging quiz:', error);
                 return { success: false, error: error.message };
             }
         },
 
-        // 🆕 ANTI-CHEAT: Submit quiz with timing validation
         submitQuizAttempt: async (lessonId, attemptId, answers, totalTimeSeconds) => {
-            console.log('🔵 submitQuizAttempt called with:', { 
-                lessonId, 
-                attemptId, 
-                answers, 
-                totalTimeSeconds 
+            const res = await fetch(`${API_URL}/quiz/submit`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ 
+                    lesson_id: lessonId, 
+                    attempt_id: attemptId,
+                    answers: answers,
+                    total_time_seconds: totalTimeSeconds
+                })
             });
-            
-            try {
-                const res = await fetch(`${API_URL}/quiz/submit`, {
-                    method: 'POST',
-                    headers: getAuthHeader(),
-                    body: JSON.stringify({ 
-                        lesson_id: lessonId, 
-                        attempt_id: attemptId,
-                        answers: answers,
-                        total_time_seconds: totalTimeSeconds
-                    })
-                });
-
-                console.log('🔵 Quiz submit response status:', res.status);
-
-                if (!res.ok) {
-                    console.log('🔴 Response not OK, handling error...');
-                    await handleFailedResponse(res, 'Submit Quiz');
-                }
-
-                const data = await res.json();
-                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
-                return data;
-                
-            } catch (error) {
-                console.error('🔴 Quiz submit FAILED with error:', error);
-                throw error;
-            }
-        },
-
-        // Keep old methods for backward compatibility (DEPRECATED)
-        getQuizQuestions: async (lessonId) => {
-            console.warn('⚠️ getQuizQuestions is deprecated. Use startQuizAttempt instead.');
-            const res = await fetch(`${API_URL}/lessons/${lessonId}/quiz`, { headers: getAuthHeader() });
 
             if (!res.ok) {
-                await handleFailedResponse(res, 'Fetch Quiz Questions'); 
+                await handleFailedResponse(res, 'Submit Quiz');
             }
 
             return res.json();
         },
-        submitQuiz: async (lessonId, answers) => {
-            console.warn('⚠️ submitQuiz is deprecated. Use submitQuizAttempt instead.');
-            console.log('🔵 submitQuiz called with:', { lessonId, answers });
-            
-            try {
-                const res = await fetch(`${API_URL}/quiz/submit`, {
-                    method: 'POST',
-                    headers: getAuthHeader(),
-                    body: JSON.stringify({ lesson_id: lessonId, answers })
-                });
-
-                console.log('🔵 Quiz submit response status:', res.status);
-
-                if (!res.ok) {
-                    console.log('🔴 Response not OK, handling error...');
-                    await handleFailedResponse(res, 'Submit Quiz');
-                }
-
-                const data = await res.json();
-                console.log('🟢 Quiz submit SUCCESS - Response data:', data);
-                return data;
-                
-            } catch (error) {
-                console.error('🔴 Quiz submit FAILED with error:', error);
-                throw error;
-            }
-        }
     },
 
-    // --- WALLET ---
     wallet: {
         getBalance: async () => {
             const res = await fetch(`${API_URL}/wallet/balance`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch Wallet Balance');
-                } catch (e) {
-                    console.error("Non-fatal error fetching balance:", e.message);
-                }
+                console.error("Error fetching wallet balance");
                 return 0;
             }
             const data = await res.json();
             return data.token_balance;
         },
+
         getHistory: async () => {
             const res = await fetch(`${API_URL}/wallet/history`, { headers: getAuthHeader() });
             if (!res.ok) {
-                try {
-                    await handleFailedResponse(res, 'Fetch Wallet History');
-                } catch (e) {
-                    console.error("Non-fatal error fetching wallet history:", e.message);
-                }
+                console.error("Error fetching wallet history");
                 return [];
             }
-
-            const data = await res.json();
-            return data;
+            return res.json();
         }
     },
 
-    // --- ADMIN ---
     admin: {
         getUsers: async () => {
             const res = await fetch(`${API_URL}/admin/users`, {
                 headers: getAuthHeader()
             });
             if (!res.ok) {
-                await handleFailedResponse(res, 'Fetch All Users (Admin)');
+                await handleFailedResponse(res, 'Fetch All Users');
             }
             return res.json();
         },
@@ -466,12 +361,10 @@ export const api = {
         },
 
         uploadQuiz: async (lessonId, questions) => {
-            const quizRequest = { lesson_id: lessonId, questions };
-
             const res = await fetch(`${API_URL}/admin/quiz`, {
                 method: 'POST',
                 headers: getAuthHeader(),
-                body: JSON.stringify(quizRequest)
+                body: JSON.stringify({ lesson_id: lessonId, questions })
             });
             if (!res.ok) {
                 await handleFailedResponse(res, 'Upload Quiz Questions');
@@ -512,7 +405,6 @@ export const api = {
             return res.json();
         },
 
-        // 🆕 ANTI-CHEAT: Quiz Configuration Management
         createQuizConfig: async (configData) => {
             const res = await fetch(`${API_URL}/admin/quiz/config`, {
                 method: 'POST',
@@ -547,7 +439,6 @@ export const api = {
             return res.json();
         },
 
-        // 🆕 ANTI-CHEAT: View suspicious attempts
         getSuspiciousAttempts: async (limit = 50) => {
             const res = await fetch(`${API_URL}/admin/suspicious-attempts?limit=${limit}`, {
                 headers: getAuthHeader()
@@ -557,198 +448,39 @@ export const api = {
             }
             return res.json();
         },
-// 
 
-   // Send notification to users
-    sendNotification: async (payload) => {
-        const response = await fetch(`${API_URL}/admin/notifications/send`, {
-            method: 'POST',
-            headers: getAuthHeader(),
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Failed to send notification' }));
-            throw new Error(error.message || 'Failed to send notification');
-        }
-        return response.json();
-    },
-
-    // Get recent notifications (optional - for showing notification history)
-    getRecentNotifications: async (limit = 10) => {
-        const response = await fetch(`${API_URL}/admin/notifications/recent?limit=${limit}`, {
-            headers: getAuthHeader()
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Failed to fetch recent notifications' }));
-            throw new Error(error.message || 'Failed to fetch recent notifications');
-        }
-        return response.json();
-    },
-// ═══════════════════════════════════════════════════════════════════════════
-// Backend API Endpoints Required
-// ═══════════════════════════════════════════════════════════════════════════
-
-/*
-POST /api/admin/notifications/send
-Authorization: Bearer {admin_token}
-Body:
-{
-  "title": "New Lessons Added!",
-  "message": "Check out the new JAMB Mathematics lessons we just uploaded.",
-  "type": "info",
-  "recipient_type": "all",
-  "recipient_ids": null
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "sent_count": 150,
-  "message": "Notification sent successfully"
-}
-
----
-
-GET /api/admin/notifications/recent?limit=10
-Authorization: Bearer {admin_token}
-
-Response: 200 OK
-[
-  {
-    "id": 1,
-    "title": "New Lessons Added!",
-    "message": "Check out the new JAMB Mathematics lessons...",
-    "type": "info",
-    "sent_to": "all",
-    "recipient_count": 150,
-    "created_at": "2025-02-16T10:30:00Z"
-  },
-  ...
-]
-*/
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Database Schema Suggestions
-// ═══════════════════════════════════════════════════════════════════════════
-
-/*
-notifications table:
-- id (primary key)
-- title (varchar)
-- message (text)
-- type (enum: 'info', 'success', 'warning', 'error')
-- recipient_type (enum: 'all', 'specific')
-- created_at (timestamp)
-- created_by_admin_id (foreign key -> users.id)
-
-notification_recipients table (for specific notifications):
-- id (primary key)
-- notification_id (foreign key -> notifications.id)
-- user_id (foreign key -> users.id)
-- is_read (boolean, default false)
-- read_at (timestamp, nullable)
-
-This allows you to:
-1. Store all notifications sent
-2. Track which users received specific notifications
-3. Track read/unread status for each user
-4. Display notification history in the admin panel
-*/
-
-        // --- 🤖 AI CONTENT ASSISTANT (Admin Only) ---
-        
-        aiGenerateLessonContent: async ({ topic, category, difficulty = 'intermediate', target_length = 1000 }) => {
-            const res = await fetch(`${API_URL}/admin/ai/generate-lesson`, {
+        sendNotification: async (payload) => {
+            const res = await fetch(`${API_URL}/admin/notifications/send`, {
                 method: 'POST',
                 headers: getAuthHeader(),
-                body: JSON.stringify({ 
-                    topic, 
-                    category, 
-                    difficulty, 
-                    target_length 
-                })
+                body: JSON.stringify(payload)
             });
             
+            const data = await res.json();
+            
             if (!res.ok) {
-                await handleFailedResponse(res, 'Generate Lesson Content');
+                throw new Error(data.message || 'Failed to send notification');
             }
             
-            return res.json();
+            return data;
         },
 
-        aiGenerateQuizQuestions: async ({ lesson_content, num_questions = 10, difficulty = 'intermediate' }) => {
-            const res = await fetch(`${API_URL}/admin/ai/generate-quiz`, {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ 
-                    lesson_content, 
-                    num_questions, 
-                    difficulty 
-                })
+        getRecentNotifications: async (limit = 10) => {
+            const res = await fetch(`${API_URL}/admin/notifications/recent?limit=${limit}`, {
+                headers: getAuthHeader()
             });
             
-            if (!res.ok) {
-                await handleFailedResponse(res, 'Generate Quiz Questions');
-            }
-            
-            return res.json();
-        },
-
-        aiImproveContent: async ({ content, instruction }) => {
-            const res = await fetch(`${API_URL}/admin/ai/improve-content`, {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ 
-                    content, 
-                    instruction 
-                })
-            });
+            const data = await res.json();
             
             if (!res.ok) {
-                await handleFailedResponse(res, 'Improve Content');
+                throw new Error(data.message || 'Failed to fetch recent notifications');
             }
             
-            return res.json();
-        },
-
-        aiSuggestRelatedTopics: async ({ topic, category, num_suggestions = 5 }) => {
-            const res = await fetch(`${API_URL}/admin/ai/suggest-topics`, {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ 
-                    topic, 
-                    category, 
-                    num_suggestions 
-                })
-            });
-            
-            if (!res.ok) {
-                await handleFailedResponse(res, 'Suggest Related Topics');
-            }
-            
-            return res.json();
-        },
-
-        aiQualityCheckContent: async ({ content, content_type = 'lesson' }) => {
-            const res = await fetch(`${API_URL}/admin/ai/quality-check`, {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ 
-                    content, 
-                    content_type 
-                })
-            });
-            
-            if (!res.ok) {
-                await handleFailedResponse(res, 'Quality Check Content');
-            }
-            
-            return res.json();
+            return data;
         },
     }
 };
 
-// 🟢 Add fetchProtectedData export for WalletModule compatibility
 export const fetchProtectedData = async (endpoint, token, options = {}) => {
     const res = await fetch(`${API_URL}${endpoint}`, {
         method: options.method || 'GET',
@@ -766,4 +498,3 @@ export const fetchProtectedData = async (endpoint, token, options = {}) => {
 
     return res.json();
 };
-//

@@ -25,22 +25,24 @@ const handleFailedResponse = async (res, action) => {
         throw new Error('QuizAlreadyCompleted');
     }
 
-    if (res.status === 429) {
+    // Read body once and handle all cases
+    let responseData;
+    try {
+        const text = await res.text();
         try {
-            const data = await res.json();
-            throw new Error(data.detail || 'Rate limit exceeded');
-        } catch (e) {
-            throw new Error('Rate limit exceeded. Please try again later.');
+            responseData = JSON.parse(text);
+        } catch {
+            responseData = { detail: text };
         }
+    } catch {
+        responseData = {};
     }
 
-    try {
-        const data = await res.json();
-        errorDetail = data.detail || errorDetail;
-    } catch (e) {
-        const text = await res.text();
-        errorDetail = `${errorDetail}. Server response: ${text.substring(0, 100)}...`; 
+    if (res.status === 429) {
+        throw new Error(responseData.detail || 'Rate limit exceeded. Please try again later.');
     }
+
+    errorDetail = responseData.detail || responseData.message || errorDetail;
 
     console.error(`${action} Failed: ${errorDetail}`); 
     throw new Error(errorDetail);

@@ -197,41 +197,41 @@ class Wallet(Base):
 # REPLACE the notification models at the end of your models.py with these:
 # ══════════════════════════════════════════════════════════════════════════
 
-class Notification(Base):
-    """Stores sent notifications"""
-    __tablename__ = 'notifications'
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    title = Column(String(200), nullable=False)
-    message = Column(Text, nullable=False)
-    type = Column(String(20), nullable=False, default='info')
-    recipient_type = Column(String(20), nullable=False, default='all')
-    created_by_admin_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+#class Notification(Base):
+   # """Stores sent notifications"""
+    #__tablename__ = 'notifications'
+#
+    #id = Column(UUID(as_uuid=True), #primary_key=True, default=uuid.uuid4)
+   # title = Column(String(200), nullable=False)
+    #message = Column(Text, nullable=False)
+    #type = Column(String(20), nullable=False, #default='info')
+   # recipient_type = Column(String(20), #nullable=False, default='all')
+   # created_by_admin_id = #Column(UUID(as_uuid=True), #ForeignKey('users.id'), nullable=False)
+   # created_at = Column(DateTime(timezone=True), #server_default=func.now())
+#
     # Relationships
-    recipients = relationship('NotificationRecipient', back_populates='notification', cascade='all, delete-orphan')
-    created_by = relationship('User', foreign_keys=[created_by_admin_id])
-
-
-class NotificationRecipient(Base):
-    """Tracks which users received notifications"""
-    __tablename__ = 'notification_recipients'
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    notification_id = Column(UUID(as_uuid=True), ForeignKey('notifications.id'), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    is_read = Column(Boolean, default=False, nullable=False)
-    read_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    __table_args__ = (
-        UniqueConstraint('notification_id', 'user_id', name='unique_notification_recipient'),
-    )
-
+    #recipients = #relationship('NotificationRecipient', #back_populates='notification', cascade='all, #delete-orphan')
+ #   created_by = relationship('User', #foreign_keys=[created_by_admin_id])
+#
+#
+#class NotificationRecipient(Base):
+    #"""Tracks which users received #notifications"""
+    #__tablename__ = 'notification_recipients'
+#
+   # id = Column(UUID(as_uuid=True), #primary_key=True, default=uuid.uuid4)
+    #notification_id = Column(UUID(as_uuid=True), #ForeignKey('notifications.id'), nullable=False)
+    #user_id = Column(UUID(as_uuid=True), #ForeignKey('users.id'), nullable=False)
+    #is_read = Column(Boolean, default=False, #nullable=False)
+    #read_at = Column(DateTime(timezone=True), #nullable=True)
+    #created_at = Column(DateTime(timezone=True), #server_default=func.now())
+#
+   # __table_args__ = (
+     #   UniqueConstraint('notification_id', #'user_id', name='unique_notification_recipient'),
+   # )
+#
     # Relationships
-    notification = relationship('Notification', back_populates='recipients')
-    user = relationship('User', foreign_keys=[user_id])
+    #notification = relationship('Notification', #back_populates='recipients')
+   # user = relationship('User', #foreign_keys=[user_id])
 
 
 # ══════════════════════════════════════════════════════════════════════════

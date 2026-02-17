@@ -31,12 +31,33 @@ const LoadingScreen = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-reads-cream relative overflow-hidden">
-      <div className="absolute w-56 h-56 bg-reads-green/10 rounded-full blur-3xl" />
-      <div className="relative z-10 flex flex-col items-center gap-4">
-        <img src={readsLogo} alt="$READS Logo" className="w-28 h-28 object-contain" />
+      {/* Pulsing background glow */}
+      <div className="absolute w-64 h-64 bg-reads-green/10 rounded-full blur-3xl animate-pulse" />
+
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        {/* Spinning ring around logo */}
+        <div className="relative flex items-center justify-center">
+          {/* Outer spinning ring */}
+          <div className="absolute w-36 h-36 rounded-full border-4 border-transparent border-t-reads-green border-r-reads-green/40 animate-spin" />
+          {/* Inner spinning ring (opposite direction) */}
+          <div
+            className="absolute w-28 h-28 rounded-full border-4 border-transparent border-b-reads-gold border-l-reads-gold/40 animate-spin"
+            style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}
+          />
+          {/* Logo */}
+          <img
+            src={readsLogo}
+            alt="$READS Logo"
+            className="w-20 h-20 object-contain animate-pulse"
+            style={{ animationDuration: '2s' }}
+          />
+        </div>
+
         <p className="text-reads-navy font-display font-black text-2xl tracking-tight">$READS</p>
-        <p className="text-reads-muted text-sm">Learn. Earn. Excel.</p>
+        <p className="text-reads-muted text-sm tracking-wide">Learn. Earn. Excel.</p>
       </div>
+
+      {/* Progress bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
         <div
           className="h-full bg-gradient-to-r from-reads-gold via-reads-green to-reads-green-light transition-all duration-300 ease-out"

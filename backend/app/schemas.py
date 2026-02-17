@@ -237,7 +237,12 @@ class SuspiciousAttempt(BaseModel):
         from_attributes = True
 
 # --- Notification Schemas ---
-
+class NotificationSend(BaseModel):
+    title: str
+    message: str
+    type: str = 'info'
+    recipient_type: str = 'all'
+    recipient_ids: Optional[List[UUID]] = None
 #class NotificationSend(BaseModel):
     #"""Schema for sending notifications"""
     #title: str

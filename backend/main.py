@@ -461,6 +461,80 @@ def reward_summary(db: Session = Depends(database.get_db), current_user: models.
     return schemas.RewardSummary(total_tokens_earned=total, total_quizzes_passed=db.query(models.Reward).filter(models.Reward.user_id == current_user.id).count())
 
 
+# ── User: Notifications ──────────────────────────────────────────────────────
+# Add these routes to your main.py file after the wallet routes
+
+@app.get("/user/notifications", status_code=200)
+def get_user_notifications(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Get all notifications for the current user"""
+    notifications = db.query(
+        models.Notification, models.NotificationRecipient
+    ).join(
+        models.NotificationRecipient,
+        models.Notification.id == models.NotificationRecipient.notification_id
+    ).filter(
+        models.NotificationRecipient.user_id == current_user.id
+    ).order_by(desc(models.Notification.created_at)).all()
+
+    return [{
+        "id": str(recipient.id),
+        "title": notification.title,
+        "message": notification.message,
+        "type": notification.type,
+        "is_read": recipient.is_read,
+        "read_at": recipient.read_at.isoformat() if recipient.read_at else None,
+        "created_at": notification.created_at.isoformat()
+    } for notification, recipient in notifications]
+
+
+@app.put("/user/notifications/{recipient_id}/read", status_code=200)
+def mark_notification_read(recipient_id: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Mark a specific notification as read"""
+    try:
+        recipient_uuid = UUID(recipient_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid notification ID format")
+
+    recipient = db.query(models.NotificationRecipient).filter(
+        models.NotificationRecipient.id == recipient_uuid,
+        models.NotificationRecipient.user_id == current_user.id
+    ).first()
+
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    recipient.is_read = True
+    recipient.read_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"success": True, "message": "Notification marked as read"}
+
+
+@app.put("/user/notifications/read-all", status_code=200)
+def mark_all_notifications_read(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Mark all notifications as read for the current user"""
+    db.query(models.NotificationRecipient).filter(
+        models.NotificationRecipient.user_id == current_user.id,
+        models.NotificationRecipient.is_read == False
+    ).update({
+        "is_read": True,
+        "read_at": datetime.now(timezone.utc)
+    }, synchronize_session=False)
+
+    db.commit()
+    return {"success": True, "message": "All notifications marked as read"}
+
+
+@app.get("/user/notifications/unread-count", status_code=200)
+def get_unread_notification_count(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Get count of unread notifications"""
+    count = db.query(models.NotificationRecipient).filter(
+        models.NotificationRecipient.user_id == current_user.id,
+        models.NotificationRecipient.is_read == False
+    ).count()
+
+    return {"count": count}
+
 # ── Admin: Quiz Config & Security ─────────────────────────────────────────────
 
 @app.post("/admin/quiz/config", response_model=schemas.QuizConfigResponse, status_code=201)

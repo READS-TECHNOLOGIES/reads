@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, BookOpen, Wallet, User, Shield, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { LayoutDashboard, BookOpen, Wallet, User, Shield } from 'lucide-react';
 import readsLogo from '../assets/reads-logo.png';
 
-// --- SERVICE & MODULE IMPORTS ---
 import { api } from './services/api';
 import WelcomePage from './modules/welcome/WelcomePage.jsx';
 import AuthModule from './modules/auth/AuthModule.jsx';
@@ -32,17 +31,12 @@ const LoadingScreen = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-reads-cream relative overflow-hidden">
-      {/* Soft glow */}
       <div className="absolute w-56 h-56 bg-reads-green/10 rounded-full blur-3xl" />
-
-      {/* Logo */}
       <div className="relative z-10 flex flex-col items-center gap-4">
         <img src={readsLogo} alt="$READS Logo" className="w-28 h-28 object-contain" />
         <p className="text-reads-navy font-display font-black text-2xl tracking-tight">$READS</p>
         <p className="text-reads-muted text-sm">Learn. Earn. Excel.</p>
       </div>
-
-      {/* Progress bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
         <div
           className="h-full bg-gradient-to-r from-reads-gold via-reads-green to-reads-green-light transition-all duration-300 ease-out"
@@ -84,11 +78,7 @@ const BottomNav = ({ view, onNavigate, isAdmin }) => {
                 className={active ? 'text-reads-green' : 'text-reads-muted'}
                 strokeWidth={active ? 2.5 : 1.8}
               />
-              <span
-                className={`text-[10px] font-semibold ${
-                  active ? 'text-reads-green' : 'text-reads-muted'
-                }`}
-              >
+              <span className={`text-[10px] font-semibold ${active ? 'text-reads-green' : 'text-reads-muted'}`}>
                 {tab.name}
               </span>
             </button>
@@ -103,11 +93,7 @@ const BottomNav = ({ view, onNavigate, isAdmin }) => {
 // Main App
 // ─────────────────────────────────────────────
 export default function App() {
-  // Password reset route
-  if (window.location.pathname === '/reset-password') {
-    return <ResetPasswordPage />;
-  }
-
+  // ── ALL hooks must be declared before any conditional returns ──
   const [user, setUser] = useState(null);
   const [tokenBalance, setTokenBalance] = useState(0);
   const [view, setView] = useState('welcome');
@@ -115,15 +101,16 @@ export default function App() {
   const [subView, setSubView] = useState('');
   const [navPayload, setNavPayload] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordReset, setIsPasswordReset] = useState(
+    window.location.pathname === '/reset-password'
+  );
 
-  // ── Navigation handler ──
   const handleNavigate = (newView, newSubView = '', payload = null) => {
     setView(newView);
     setSubView(newSubView);
     setNavPayload(payload);
   };
 
-  // ── Logout ──
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     setUser(null);
@@ -132,7 +119,6 @@ export default function App() {
     setAuthView('login');
   };
 
-  // ── Login success ──
   const handleLoginSuccess = async () => {
     const userData = await api.auth.me();
     if (userData) {
@@ -145,7 +131,6 @@ export default function App() {
     }
   };
 
-  // ── Session check on mount ──
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('access_token');
@@ -159,22 +144,26 @@ export default function App() {
     checkSession();
   }, []);
 
-  // ── Refresh balance when returning to dashboard ──
   useEffect(() => {
     if (view === 'dashboard' && user) {
       api.wallet.getBalance().then(setTokenBalance);
     }
   }, [view, user]);
 
-  // ── Loading screen ──
-  if (isLoading) return <LoadingScreen />;
+  // ── Conditional renders AFTER all hooks ──
 
-  // ── Welcome page ──
+  if (isPasswordReset) {
+    return <ResetPasswordPage />;
+  }
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   if (!user && view === 'welcome') {
     return <WelcomePage onGetStarted={() => setView('login')} />;
   }
 
-  // ── Auth screens (login / signup / forgot-password) ──
   if (!user) {
     return (
       <AuthModule
@@ -185,11 +174,8 @@ export default function App() {
     );
   }
 
-  // ── Authenticated app shell ──
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-
-      {/* ── Page content (padded for bottom nav) ── */}
       <main className="max-w-lg mx-auto w-full pb-24 min-h-screen">
 
         {view === 'dashboard' && (
@@ -225,18 +211,16 @@ export default function App() {
         )}
 
         {view === 'admin' && user?.is_admin && (
-          <AdminModule user={user} />
+          <AdminModule currentUserId={user.id} />
         )}
 
       </main>
 
-      {/* ── Bottom navigation ── */}
       <BottomNav
         view={view}
         onNavigate={handleNavigate}
         isAdmin={user?.is_admin}
       />
-
     </div>
   );
 }

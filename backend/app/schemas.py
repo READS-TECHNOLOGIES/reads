@@ -238,43 +238,43 @@ class SuspiciousAttempt(BaseModel):
 
 # --- Notification Schemas ---
 
-class NotificationSend(BaseModel):
-    """Schema for sending notifications"""
-    title: str
-    message: str
-    type: str = 'info'  # info, success, warning, error
-    recipient_type: str = 'all'  # all or specific
-    recipient_ids: Optional[List[int]] = None
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "New Lessons Added!",
-                "message": "Check out the new JAMB Mathematics lessons",
-                "type": "info",
-                "recipient_type": "all",
-                "recipient_ids": None
-            }
-        }
-
-
-class NotificationResponse(BaseModel):
-    """Response after sending notification"""
-    success: bool
-    sent_count: int
-    message: str
-
-
-class NotificationHistory(BaseModel):
-    """Schema for notification history"""
-    id: int
-    title: str
-    message: str
-    type: str
-    sent_to: str
-    recipient_count: int
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True  # For Pydantic v2 (use orm_mode = True for v1)
+#class NotificationSend(BaseModel):
+    #"""Schema for sending notifications"""
+    #title: str
+    #message: str
+    #type: str = 'info'  # info, success, warning, #error
+    #recipient_type: str = 'all'  # all or #specific
+    #recipient_ids: Optional[List[int]] = None
+   # 
+    #class Config:
+       # json_schema_extra = {
+            #"example": {
+                #"title": "New Lessons Added!",
+              #  "message": "Check out the new #JAMB Mathematics lessons",
+         #       "type": "info",
+        #        "recipient_type": "all",
+        #        "recipient_ids": None
+      #      }
+     #   }
+#
+#
+#class NotificationResponse(BaseModel):
+    #"""Response after sending notification"""
+    #success: bool
+    #sent_count: int
+    #message: str
+#
+#
+#class NotificationHistory(BaseModel):
+    #"""Schema for notification history"""
+   # id: int
+    #title: str
+    #message: str
+    #type: str
+    #sent_to: str
+  #  recipient_count: int
+    #created_at: datetime
+  #  
+  #  class Config:
+       # from_attributes = True  # For Pydantic v2 #(use orm_mode = True for v1)
 

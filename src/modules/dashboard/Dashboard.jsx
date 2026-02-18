@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, BookOpen, Award, ArrowRight, Clock } from 'lucide-react';
 import { api } from '../../services/api';
-import LeaderboardWidget from '../leaderboard/LeaderboardWidget';
+import LeaderboardWidget from './LeaderboardWidget';
 
 export default function Dashboard({ user, wallet, onNavigate }) {
     const [stats, setStats] = useState({ lessons_completed: 0, quizzes_taken: 0 });

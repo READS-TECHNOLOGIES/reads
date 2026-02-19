@@ -20,11 +20,27 @@
       "dest": "backend/main.py"
     },
     {
+      "src": "/sw.js",
+      "dest": "/sw.js",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Service-Worker-Allowed": "/"
+      }
+    },
+    {
+      "src": "/workbox-(.*)",
+      "dest": "/workbox-$1"
+    },
+    {
+      "src": "/manifest.webmanifest",
+      "dest": "/manifest.webmanifest"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json))",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json|webmanifest))",
       "dest": "/$1"
     },
     {

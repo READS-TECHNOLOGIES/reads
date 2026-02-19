@@ -694,13 +694,37 @@ const QuizView = ({ lessonData, onNavigate, onUpdateWallet }) => {
 // ====================================================================
 
 const QuizResultsView = ({ result, questions, userAnswers, lessonTitle, onNavigate }) => {
-  const score       = result?.score ?? 0;
-  const total       = questions?.length ?? 0;
-  const tokens      = result?.tokens_awarded ?? 0;
-  const accuracy    = total > 0 ? Math.round((score / total) * 100) : 0;
-  const timeSpent   = result?.time_spent_seconds ?? 0;
-  const formatTime  = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
-  const opts        = ['A', 'B', 'C', 'D'];
+  const opts = ['A', 'B', 'C', 'D'];
+
+  // ── Recalculate everything client-side for accuracy ──
+  const total = questions?.length ?? 0;
+  const tokens = result?.tokens_awarded ?? 0;
+  const timeSpent = result?.time_spent_seconds ?? 0;
+  const formatTime = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
+
+  // Normalize answer to single uppercase letter
+  const normalize = (val) => {
+    if (!val) return '';
+    const str = String(val).trim();
+    if (/^[A-Da-d]$/.test(str)) return str.toUpperCase();
+    const match = str.match(/^([A-Da-d])[.):\s]/);
+    if (match) return match[1].toUpperCase();
+    return str.charAt(0).toUpperCase();
+  };
+
+  // Count correct answers client-side
+  let correctCount = 0;
+  const questionResults = (questions ?? []).map((q) => {
+    const userKey    = normalize(userAnswers?.[q.id]);
+    const correctKey = normalize(q.correct_answer ?? q.correct_option ?? q.correctAnswer ?? '');
+    const isCorrect  = userKey !== '' && userKey === correctKey;
+    if (isCorrect) correctCount++;
+    return { q, userKey, correctKey, isCorrect };
+  });
+
+  const wrongCount = total - correctCount;
+  const accuracy   = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+  const passed     = result?.passed !== undefined ? result.passed : accuracy >= 70;
 
   return (
     <div className="animate-fade-in pb-8">
@@ -709,11 +733,19 @@ const QuizResultsView = ({ result, questions, userAnswers, lessonTitle, onNaviga
         <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
           <Trophy size={40} className="text-reads-gold-dark" />
         </div>
-        <h2 className="text-reads-navy font-black text-2xl">You Scored {score}/{total}</h2>
-        <p className="text-reads-green font-semibold text-sm mt-1">
-          {accuracy >= 80 ? 'Great job! Keep learning to earn more.' : 'Keep studying to improve your score!'}
+        <h2 className="text-reads-navy font-black text-2xl">
+          {passed ? '🎉 Congratulations!' : 'Quiz Completed'}
+        </h2>
+        <p className={`font-semibold text-sm mt-1 ${passed ? 'text-reads-green' : 'text-reads-red'}`}>
+          {accuracy >= 80
+            ? 'Great job! Keep learning to earn more.'
+            : accuracy >= 70
+            ? 'You passed! Keep pushing for a higher score.'
+            : 'Keep studying to improve your score!'}
         </p>
-        <p className="text-reads-muted text-xs mt-1">Accuracy: {accuracy}%</p>
+        <p className="text-reads-muted text-xs mt-1">
+          Score: {correctCount}/{total} correct — {accuracy}%
+        </p>
 
         {tokens > 0 && (
           <div className="mt-4 inline-flex flex-col items-center bg-amber-50 border border-reads-gold/30 rounded-2xl px-6 py-3">
@@ -727,10 +759,10 @@ const QuizResultsView = ({ result, questions, userAnswers, lessonTitle, onNaviga
       <div className="mx-4 bg-white rounded-2xl p-4 shadow-reads-card mb-4">
         <h3 className="text-reads-navy font-bold text-sm mb-3">Your Performance</h3>
         {[
-          { icon: <CheckCircle size={16} className="text-reads-green" />, label: 'Correct Answers', value: score },
-          { icon: <XCircle size={16} className="text-reads-red" />, label: 'Wrong Answers', value: total - score },
-          { icon: <Clock size={16} className="text-blue-400" />, label: 'Time Spent', value: formatTime(timeSpent) },
-          { icon: <TrendingUp size={16} className="text-purple-400" />, label: 'Accuracy', value: `${accuracy}%` },
+          { icon: <CheckCircle size={16} className="text-reads-green" />,  label: 'Correct Answers', value: correctCount },
+          { icon: <XCircle size={16} className="text-reads-red" />,        label: 'Wrong Answers',   value: wrongCount },
+          { icon: <Clock size={16} className="text-blue-400" />,           label: 'Time Spent',      value: formatTime(timeSpent) },
+          { icon: <TrendingUp size={16} className="text-purple-400" />,    label: 'Accuracy',        value: `${accuracy}%` },
         ].map(({ icon, label, value }) => (
           <div key={label} className="flex items-center justify-between py-2.5 border-b last:border-0 border-gray-50">
             <span className="flex items-center gap-2 text-sm text-reads-navy-soft">{icon} {label}</span>
@@ -740,46 +772,63 @@ const QuizResultsView = ({ result, questions, userAnswers, lessonTitle, onNaviga
       </div>
 
       {/* Review */}
-      {questions?.length > 0 && (
+      {questionResults.length > 0 && (
         <div className="mx-4 mb-4">
           <h3 className="text-reads-navy font-bold text-sm mb-3">Review Questions</h3>
           <div className="space-y-3">
-            {questions.map((q, idx) => {
-              const userAnswer    = userAnswers?.[q.id];
-              const correctAnswer = q.correct_answer;
-              const isCorrect     = userAnswer === correctAnswer;
-
-              return (
-                <div key={q.id} className="bg-white rounded-2xl p-4 shadow-reads-card">
-                  <p className="text-reads-navy font-semibold text-xs mb-3">Q{idx + 1}. {q.question}</p>
-                  {q.options?.map((opt, i) => {
-                    const char         = opts[i];
-                    const isUserPick   = userAnswer === char;
-                    const isCorrectOpt = correctAnswer === char;
-                    let cls = 'bg-gray-50 border-gray-100 text-reads-muted';
-                    if (isCorrectOpt)          cls = 'bg-reads-green-bg border-reads-green text-reads-green';
-                    else if (isUserPick && !isCorrect) cls = 'bg-reads-red-bg border-reads-red text-reads-red';
-
-                    return (
-                      <div key={char} className={`flex items-center gap-2 p-2.5 rounded-xl border mb-1.5 ${cls}`}>
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
-                          ${isCorrectOpt ? 'bg-reads-green text-white' : isUserPick && !isCorrect ? 'bg-reads-red text-white' : 'bg-gray-200 text-reads-muted'}`}>
-                          {char}
-                        </span>
-                        <span className="text-xs font-medium flex-1">{opt}</span>
-                        {isCorrectOpt && <CheckCircle size={13} />}
-                        {isUserPick && !isCorrect && <XCircle size={13} />}
-                      </div>
-                    );
-                  })}
-                  {q.explanation && (
-                    <p className="text-reads-muted text-xs mt-2 pt-2 border-t border-gray-100 leading-relaxed">
-                      {q.explanation}
-                    </p>
-                  )}
+            {questionResults.map(({ q, userKey, correctKey, isCorrect }, idx) => (
+              <div key={q.id} className="bg-white rounded-2xl p-4 shadow-reads-card">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-reads-navy font-semibold text-xs flex-1 pr-2">Q{idx + 1}. {q.question}</p>
+                  {isCorrect
+                    ? <CheckCircle size={16} className="text-reads-green flex-shrink-0" />
+                    : <XCircle    size={16} className="text-reads-red flex-shrink-0" />}
                 </div>
-              );
-            })}
+
+                {q.options?.map((opt, i) => {
+                  const char         = opts[i];
+                  const isUserPick   = userKey === char;
+                  const isCorrectOpt = correctKey === char;
+
+                  let cls = 'bg-gray-50 border-gray-100 text-reads-muted';
+                  let circleCls = 'bg-gray-200 text-reads-muted';
+                  let badge = null;
+
+                  if (isCorrectOpt && isUserPick) {
+                    // ✅ User picked correctly
+                    cls = 'bg-reads-green-bg border-reads-green text-reads-green';
+                    circleCls = 'bg-reads-green text-white';
+                    badge = <span className="text-xs font-bold text-reads-green whitespace-nowrap">✅ Your Answer</span>;
+                  } else if (!isCorrectOpt && isUserPick) {
+                    // ❌ User picked wrong
+                    cls = 'bg-reads-red-bg border-reads-red text-reads-red';
+                    circleCls = 'bg-reads-red text-white';
+                    badge = <span className="text-xs font-bold text-reads-red whitespace-nowrap">❌ Your Answer</span>;
+                  } else if (isCorrectOpt && !isUserPick) {
+                    // ✅ Show correct answer when user was wrong
+                    cls = 'bg-reads-green-bg border-reads-green text-reads-green';
+                    circleCls = 'bg-reads-green text-white';
+                    badge = <span className="text-xs font-bold text-reads-green whitespace-nowrap">✅ Correct</span>;
+                  }
+
+                  return (
+                    <div key={char} className={`flex items-center gap-2 p-2.5 rounded-xl border mb-1.5 ${cls}`}>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${circleCls}`}>
+                        {char}
+                      </span>
+                      <span className="text-xs font-medium flex-1">{opt}</span>
+                      {badge}
+                    </div>
+                  );
+                })}
+
+                {q.explanation && (
+                  <p className="text-reads-muted text-xs mt-2 pt-2 border-t border-gray-100 leading-relaxed">
+                    💡 {q.explanation}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

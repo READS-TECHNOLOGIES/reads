@@ -328,7 +328,11 @@ def check_quiz_status(lesson_id: str, db: Session = Depends(database.get_db), cu
     if not progress or progress.read_time_seconds < config.min_read_time_seconds:
         return schemas.QuizAttemptStatus(can_attempt=False, reason=f"Please read the lesson for at least {config.min_read_time_seconds} seconds")
 
-    return schemas.QuizAttemptStatus(can_attempt=True, hourly_attempts_remaining=rate_status.get("hourly_remaining"), daily_attempts_remaining=rate_status.get("daily_remaining"))
+    return schemas.QuizAttemptStatus(
+        can_attempt=True,
+        hourly_attempts_remaining=rate_status.get("hourly_remaining"),
+        daily_attempts_remaining=rate_status.get("daily_remaining")
+    )
 
 
 @app.post("/quiz/start", response_model=schemas.QuizAttemptResponse)
@@ -350,14 +354,36 @@ def start_quiz_attempt(start_data: schemas.QuizAttemptStart, db: Session = Depen
     selected_questions = random.sample(all_questions, config.questions_per_quiz)
     question_ids = [str(q.id) for q in selected_questions]
 
-    attempt = models.QuizAttempt(user_id=current_user.id, lesson_id=lesson_id, question_ids=question_ids, started_at=datetime.now(timezone.utc))
+    attempt = models.QuizAttempt(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        question_ids=question_ids,
+        started_at=datetime.now(timezone.utc)
+    )
     db.add(attempt)
     increment_rate_limit(current_user.id, db)
     db.commit()
     db.refresh(attempt)
 
-    questions_response = [schemas.QuizQuestionResponse(id=q.id, question=q.question, options=q.options) for q in selected_questions]
-    return schemas.QuizAttemptResponse(attempt_id=attempt.id, lesson_id=lesson_id, questions=questions_response, started_at=attempt.started_at, min_time_per_question=config.min_time_per_question, cooldown_seconds=config.cooldown_seconds)
+    # ✅ Include correct_option so frontend can mark answers correctly after submission
+    questions_response = [
+        schemas.QuizQuestionResponse(
+            id=q.id,
+            question=q.question,
+            options=q.options,
+            correct_option=q.correct_option
+        )
+        for q in selected_questions
+    ]
+
+    return schemas.QuizAttemptResponse(
+        attempt_id=attempt.id,
+        lesson_id=lesson_id,
+        questions=questions_response,
+        started_at=attempt.started_at,
+        min_time_per_question=config.min_time_per_question,
+        cooldown_seconds=config.cooldown_seconds
+    )
 
 
 @app.post("/quiz/flag", status_code=200)
@@ -373,8 +399,13 @@ def flag_quiz_attempt(flag_data: schemas.QuizFlagRequest, db: Session = Depends(
 
         attempt.flagged_suspicious = True
         db.commit()
-        return {"message": "Quiz attempt flagged successfully", "success": True, "attempt_id": str(attempt.id), "violation_type": flag_data.violation_type}
-    except Exception as e:
+        return {
+            "message": "Quiz attempt flagged successfully",
+            "success": True,
+            "attempt_id": str(attempt.id),
+            "violation_type": flag_data.violation_type
+        }
+    except Exception:
         db.rollback()
         return {"message": "Failed to flag quiz", "success": False}
 
@@ -403,7 +434,10 @@ def submit_quiz(submission: schemas.QuizSubmitRequest, db: Session = Depends(dat
     now = datetime.now(timezone.utc)
     time_elapsed = (now - attempt.started_at).total_seconds()
     min_expected_time = len(submission.answers) * config.min_time_per_question
-    flagged_suspicious = submission.total_time_seconds < min_expected_time or time_elapsed < min_expected_time
+    flagged_suspicious = (
+        submission.total_time_seconds < min_expected_time or
+        time_elapsed < min_expected_time
+    )
 
     for answer in submission.answers:
         if answer.time_spent_seconds < config.min_time_per_question:
@@ -413,7 +447,11 @@ def submit_quiz(submission: schemas.QuizSubmitRequest, db: Session = Depends(dat
     quiz_questions = db.query(models.QuizQuestion).filter(models.QuizQuestion.id.in_(question_ids)).all()
     correct_answers = {str(q.id): q.correct_option for q in quiz_questions}
 
-    correct_count = sum(1 for answer in submission.answers if str(answer.question_id) in correct_answers and answer.selected == correct_answers[str(answer.question_id)])
+    correct_count = sum(
+        1 for answer in submission.answers
+        if str(answer.question_id) in correct_answers
+        and answer.selected == correct_answers[str(answer.question_id)]
+    )
     wrong_count = len(submission.answers) - correct_count
     total_questions = len(quiz_questions)
     score = int((correct_count / total_questions) * 100) if total_questions > 0 else 0
@@ -433,12 +471,26 @@ def submit_quiz(submission: schemas.QuizSubmitRequest, db: Session = Depends(dat
     attempt.score = score
     attempt.passed = passed
 
-    db.add(models.QuizResult(user_id=current_user.id, lesson_id=lesson_id, score=score, correct_count=correct_count, wrong_count=wrong_count, attempt_id=attempt_id))
+    db.add(models.QuizResult(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        score=score,
+        correct_count=correct_count,
+        wrong_count=wrong_count,
+        attempt_id=attempt_id
+    ))
     db.commit()
 
     message = "Quiz completed but flagged for review due to unusually fast completion time" if flagged_suspicious else None
-    return schemas.QuizResultResponse(score=score, correct=correct_count, wrong=wrong_count, tokens_awarded=tokens_awarded, passed=passed, flagged_suspicious=flagged_suspicious, message=message)
-
+    return schemas.QuizResultResponse(
+        score=score,
+        correct=correct_count,
+        wrong=wrong_count,
+        tokens_awarded=tokens_awarded,
+        passed=passed,
+        flagged_suspicious=flagged_suspicious,
+        message=message
+    )
 
 # ── Wallet ────────────────────────────────────────────────────────────────────
 

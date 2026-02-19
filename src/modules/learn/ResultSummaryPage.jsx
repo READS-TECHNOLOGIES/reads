@@ -15,12 +15,9 @@ const StatCard = ({ label, value, color }) => (
 const normalizeAnswer = (value) => {
     if (!value) return '';
     const str = String(value).trim();
-    // If it's already a single letter
     if (/^[A-Da-d]$/.test(str)) return str.toUpperCase();
-    // If it starts with a letter followed by . or ) or space
     const match = str.match(/^([A-Da-d])[.):\s]/);
     if (match) return match[1].toUpperCase();
-    // Fallback: return first character uppercased
     return str.charAt(0).toUpperCase();
 };
 
@@ -43,6 +40,20 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
         );
     }
 
+    // ── DEBUG LOGS — remove after confirming data shape ──
+    console.log('🔍 QUESTION SAMPLE:', JSON.stringify(questions[0], null, 2));
+    console.log('🔍 USER ANSWERS:', JSON.stringify(userAnswers, null, 2));
+    console.log('🔍 ALL QUESTIONS (correct_answer fields):',
+        questions.map(q => ({
+            id: q.id,
+            correct_answer: q.correct_answer,
+            correct_option: q.correct_option,
+            correctAnswer: q.correctAnswer,
+            options: q.options,
+            userAnswer: userAnswers[q.id]
+        }))
+    );
+
     // ── Recalculate score client-side for accuracy ──
     let correctCount = 0;
     const questionResults = questions.map((q) => {
@@ -55,16 +66,25 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
 
         if (isCorrect) correctCount++;
 
+        // Per-question debug log
+        console.log(`📝 Q${q.id}:`, {
+            rawUserAnswer,
+            rawCorrectAnswer,
+            userKey,
+            correctKey,
+            isCorrect
+        });
+
         return { q, userKey, correctKey, isCorrect };
     });
 
     const total = questions.length;
     const calculatedScore = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-
-    // Use backend score if available and close to ours, otherwise use calculated
     const displayScore = result.score !== undefined ? result.score : calculatedScore;
     const passed = result.passed !== undefined ? result.passed : displayScore >= 70;
     const flagged = result.flagged_suspicious || false;
+
+    console.log('📊 Score summary:', { correctCount, total, calculatedScore, displayScore, passed });
 
     return (
         <div className="space-y-6 animate-fade-in pb-6">
@@ -78,7 +98,6 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                     <p className="text-sm text-card-muted">Results for: <strong className="text-white">{lessonTitle}</strong></p>
                 </div>
 
-                {/* Suspicious Activity Warning */}
                 {flagged && (
                     <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-lg">
                         <div className="flex items-start space-x-2">
@@ -135,7 +154,6 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                 : 'bg-red-900/10 border-red-500/50'
                         }`}
                     >
-                        {/* Question header */}
                         <div className="flex items-start justify-between mb-3">
                             <p className="font-medium text-sm text-white flex-1 leading-relaxed">
                                 <span className="text-cyan font-bold">{index + 1}.</span> {q.question}
@@ -147,21 +165,18 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                             )}
                         </div>
 
-                        {/* Options */}
                         <div className="space-y-2">
                             {q.options.map((option) => {
                                 const optionKey = normalizeAnswer(option);
                                 const isUserAnswer = userKey === optionKey;
                                 const isCorrectOption = correctKey === optionKey;
 
-                                // Determine styling
                                 let bgColor = 'bg-black/30';
                                 let borderColor = 'border-transparent';
                                 let textColor = 'text-gray-300';
                                 let badge = null;
 
                                 if (isCorrectOption && isUserAnswer) {
-                                    // ✅ User picked the correct answer
                                     bgColor = 'bg-green-900/20';
                                     borderColor = 'border-green-500';
                                     textColor = 'text-white';
@@ -171,7 +186,6 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                         </div>
                                     );
                                 } else if (!isCorrectOption && isUserAnswer) {
-                                    // ❌ User picked a wrong answer
                                     bgColor = 'bg-red-900/20';
                                     borderColor = 'border-red-500';
                                     textColor = 'text-white';
@@ -181,7 +195,6 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                                         </div>
                                     );
                                 } else if (isCorrectOption && !isUserAnswer) {
-                                    // ✅ This is the correct answer (user got it wrong)
                                     bgColor = 'bg-green-900/20';
                                     borderColor = 'border-green-500';
                                     textColor = 'text-white';
@@ -206,13 +219,15 @@ const ResultSummaryPage = ({ result, questions, userAnswers, lessonTitle, onNavi
                             })}
                         </div>
 
-                        {/* Debug info - remove in production */}
-                        {!isCorrect && (
-                            <p className="mt-2 text-xs text-gray-500">
-                                Your answer: <strong className="text-red-400">{userKey || 'None'}</strong> &nbsp;|&nbsp;
-                                Correct: <strong className="text-green-400">{correctKey}</strong>
-                            </p>
-                        )}
+                        {/* Debug info visible on screen */}
+                        <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono">
+                            <p className="text-yellow-400">Raw user answer: <strong>{String(userAnswers[q.id] ?? 'undefined')}</strong></p>
+                            <p className="text-yellow-400">Raw correct answer: <strong>{String(q.correct_answer ?? q.correct_option ?? q.correctAnswer ?? 'undefined')}</strong></p>
+                            <p className="text-blue-400">Normalized user: <strong>{userKey || 'EMPTY'}</strong></p>
+                            <p className="text-blue-400">Normalized correct: <strong>{correctKey || 'EMPTY'}</strong></p>
+                            <p className={isCorrect ? 'text-green-400' : 'text-red-400'}>Match: <strong>{isCorrect ? '✅ YES' : '❌ NO'}</strong></p>
+                            <p className="text-gray-400">Options: <strong>{JSON.stringify(q.options)}</strong></p>
+                        </div>
                     </div>
                 ))}
             </div>

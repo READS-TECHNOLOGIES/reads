@@ -685,6 +685,18 @@ def send_notification(
             ))
 
         db.commit()
+        
+        return {
+            "success": True,
+            "sent_count": recipient_count,
+            "message": f"Notification sent to {recipient_count} user(s)"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/admin/notifications/recent", status_code=200)
 def get_recent_notifications(limit: int = 10, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):

@@ -264,3 +264,11 @@ class NotificationSend(BaseModel):
     type: str = 'info'
     recipient_type: str = 'all'
     recipient_ids: Optional[List[UUID]] = None
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+
+class PushUnsubscribe(BaseModel):
+    endpoint: str

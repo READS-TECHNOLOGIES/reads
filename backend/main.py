@@ -652,7 +652,11 @@ def get_suspicious_attempts(limit: int = 50, db: Session = Depends(database.get_
 # ── Admin: Notifications ──────────────────────────────────────────────────────
 
 @app.post("/admin/notifications/send", status_code=200)
-def send_notification(payload: schemas.NotificationSend, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
+def send_notification(
+    payload: schemas.NotificationSend,
+    db: Session = Depends(database.get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
     try:
         notification = models.Notification(
             title=payload.title,
@@ -666,24 +670,21 @@ def send_notification(payload: schemas.NotificationSend, db: Session = Depends(d
 
         if payload.recipient_type == "all":
             users = db.query(models.User).all()
-            recipient_count = len(users)
-            for user in users:
-                db.add(models.NotificationRecipient(notification_id=notification.id, user_id=user.id))
         else:
             if not payload.recipient_ids:
                 raise HTTPException(status_code=400, detail="No recipients specified")
-            recipient_count = len(payload.recipient_ids)
-            for user_id in payload.recipient_ids:
-                db.add(models.NotificationRecipient(notification_id=notification.id, user_id=user_id))
+            users = db.query(models.User).filter(models.User.id.in_(payload.recipient_ids)).all()
+
+        recipient_count = len(users)
+        user_ids = [u.id for u in users]
+
+        for user_id in user_ids:
+            db.add(models.NotificationRecipient(
+                notification_id=notification.id,
+                user_id=user_id
+            ))
 
         db.commit()
-        return {"success": True, "sent_count": recipient_count, "message": f"Notification sent to {recipient_count} user(s)"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/admin/notifications/recent", status_code=200)
 def get_recent_notifications(limit: int = 10, db: Session = Depends(database.get_db), current_admin: models.User = Depends(get_current_admin)):
@@ -776,3 +777,106 @@ def delete_quiz(lesson_id: str, db: Session = Depends(database.get_db), current_
         raise HTTPException(status_code=400, detail="Invalid lesson ID format")
     db.query(models.QuizQuestion).filter(models.QuizQuestion.lesson_id == lesson_uuid).delete(synchronize_session=False)
     db.commit()
+
+# ── Push Notification Subscription Endpoints ──────────────────────────────────
+# Add these to backend/main.py
+
+@app.post("/push/subscribe", status_code=200)
+def save_push_subscription(
+    payload: schemas.PushSubscriptionCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Save or update a user's push subscription."""
+    existing = db.query(models.PushSubscription).filter(
+        models.PushSubscription.user_id == current_user.id,
+        models.PushSubscription.endpoint == payload.endpoint
+    ).first()
+
+    if existing:
+        existing.p256dh = payload.p256dh
+        existing.auth = payload.auth
+    else:
+        db.add(models.PushSubscription(
+            user_id=current_user.id,
+            endpoint=payload.endpoint,
+            p256dh=payload.p256dh,
+            auth=payload.auth,
+        ))
+
+    db.commit()
+    return {"success": True, "message": "Push subscription saved."}
+
+
+@app.delete("/push/unsubscribe", status_code=200)
+def remove_push_subscription(
+    payload: schemas.PushUnsubscribe,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Remove a push subscription (e.g. on logout)."""
+    db.query(models.PushSubscription).filter(
+        models.PushSubscription.user_id == current_user.id,
+        models.PushSubscription.endpoint == payload.endpoint
+    ).delete()
+    db.commit()
+    return {"success": True}
+
+
+# ── Updated Admin Send Notification (replaces existing) ───────────────────────
+
+
+
+        # ── Send Web Push to all subscribed users ──────────────────────────
+        push_data = json.dumps({
+            "title": payload.title,
+            "message": payload.message,
+            "url": "/"
+        })
+
+        subscriptions = db.query(models.PushSubscription).filter(
+            models.PushSubscription.user_id.in_(user_ids)
+        ).all()
+
+        vapid_private_key = os.getenv("VAPID_PRIVATE_KEY")
+        vapid_claims = {"sub": f"mailto:{os.getenv('GMAIL_USER', 'readstechnologies@gmail.com')}"}
+        push_success = 0
+        push_failed = 0
+
+        if vapid_private_key and subscriptions:
+            from pywebpush import webpush, WebPushException
+            for sub in subscriptions:
+                try:
+                    webpush(
+                        subscription_info={
+                            "endpoint": sub.endpoint,
+                            "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                        },
+                        data=push_data,
+                        vapid_private_key=vapid_private_key,
+                        vapid_claims=vapid_claims
+                    )
+                    push_success += 1
+                except WebPushException as e:
+                    push_failed += 1
+                    # If subscription expired/invalid, remove it
+                    if e.response and e.response.status_code in [404, 410]:
+                        db.delete(sub)
+                    print(f"Push failed for {sub.endpoint[:40]}: {e}")
+
+            if push_failed > 0:
+                db.commit()  # Remove expired subscriptions
+
+        return {
+            "success": True,
+            "sent_count": recipient_count,
+            "push_sent": push_success,
+            "push_failed": push_failed,
+            "message": f"Notification sent to {recipient_count} user(s), {push_success} push delivered."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

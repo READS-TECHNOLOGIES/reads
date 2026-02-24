@@ -26,6 +26,7 @@ class User(Base):
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
     quiz_attempts = relationship("QuizAttempt", back_populates="user")
     notifications_received = relationship("NotificationRecipient", back_populates="user")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
 
 
 class PasswordResetToken(Base):
@@ -210,3 +211,16 @@ class NotificationRecipient(Base):
 
     notification = relationship("Notification", back_populates="recipients")
     user = relationship("User", foreign_keys=[user_id], back_populates="notifications_received")
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    endpoint = Column(Text, nullable=False)
+    p256dh = Column(Text, nullable=False)   # Public key
+    auth = Column(Text, nullable=False)     # Auth secret
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="push_subscriptions")

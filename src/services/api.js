@@ -525,6 +525,34 @@ export const api = {
         },
     }
 };
+// ── Add this block to src/services/api.js inside the `api` object ────────────
+// Place it after the `admin` section, before the closing };
+
+push: {
+    saveSubscription: async (subscription) => {
+        const res = await fetch(`${API_URL}/push/subscribe`, {
+            method: 'POST',
+            headers: getAuthHeader(),
+            body: JSON.stringify({
+                endpoint: subscription.endpoint,
+                p256dh: subscription.keys.p256dh,
+                auth: subscription.keys.auth,
+            })
+        });
+        if (!res.ok) {
+            console.warn('Failed to save push subscription');
+        }
+        return res.ok;
+    },
+
+        const res = await fetch(`${API_URL}/push/unsubscribe`, {
+            method: 'DELETE',
+            headers: getAuthHeader(),
+            body: JSON.stringify({ endpoint })
+        });
+        return res.ok;
+    },
+},
 
 export const fetchProtectedData = async (endpoint, token, options = {}) => {
     const res = await fetch(`${API_URL}${endpoint}`, {

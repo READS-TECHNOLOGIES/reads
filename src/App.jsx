@@ -129,6 +129,7 @@ export default function App() {
   );
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  usePushNotifications(user);
 
   const handleNavigate = (newView, newSubView = '', payload = null) => {
     setView(newView);

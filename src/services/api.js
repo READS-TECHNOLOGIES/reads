@@ -530,7 +530,7 @@ export const api = {
 
 push: {
     saveSubscription: async (subscription) => {
-        const res = await fetch(`${API_URL}/push/subscribe`, {
+         const res = await fetch(`${API_URL}/push/subscribe`, {
             method: 'POST',
             headers: getAuthHeader(),
             body: JSON.stringify({
@@ -552,8 +552,6 @@ push: {
         });
         return res.ok;
     },
-},
-
 export const fetchProtectedData = async (endpoint, token, options = {}) => {
     const res = await fetch(`${API_URL}${endpoint}`, {
         method: options.method || 'GET',

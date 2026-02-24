@@ -25,7 +25,6 @@ const handleFailedResponse = async (res, action) => {
         throw new Error('QuizAlreadyCompleted');
     }
 
-    // Read body once and handle all cases
     let responseData;
     try {
         const text = await res.text();
@@ -43,7 +42,6 @@ const handleFailedResponse = async (res, action) => {
     }
 
     errorDetail = responseData.detail || responseData.message || errorDetail;
-
     console.error(`${action} Failed: ${errorDetail}`); 
     throw new Error(errorDetail);
 }
@@ -523,10 +521,9 @@ export const api = {
             
             return data;
         },
-    }
-};
+    },
 
-push: {
+    push: {
         saveSubscription: async (subscription) => {
             const res = await fetch(`${API_URL}/push/subscribe`, {
                 method: 'POST',

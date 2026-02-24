@@ -14,6 +14,7 @@ import SettingsModule from './modules/settings/SettingsModule.jsx';
 import AdminModule from './modules/admin/AdminModule.jsx';
 import NotificationInbox from './modules/notifications/NotificationInbox.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
+import { usePushNotifications } from './hooks/usePushNotifications';
 
 // ─────────────────────────────────────────────
 // Loading Screen

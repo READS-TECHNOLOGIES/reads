@@ -686,12 +686,53 @@ def send_notification(
 
         db.commit()
         
+        # ── Send Web Push to all subscribed users ──────────────────────────
+        push_data = json.dumps({
+            "title": payload.title,
+            "message": payload.message,
+            "url": "/"
+        })
+
+        subscriptions = db.query(models.PushSubscription).filter(
+            models.PushSubscription.user_id.in_(user_ids)
+        ).all()
+
+        vapid_private_key = os.getenv("VAPID_PRIVATE_KEY")
+        vapid_claims = {"sub": f"mailto:{os.getenv('GMAIL_USER', 'readstechnologies@gmail.com')}"}
+        push_success = 0
+        push_failed = 0
+
+        if vapid_private_key and subscriptions:
+            from pywebpush import webpush, WebPushException
+            for sub in subscriptions:
+                try:
+                    webpush(
+                        subscription_info={
+                            "endpoint": sub.endpoint,
+                            "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                        },
+                        data=push_data,
+                        vapid_private_key=vapid_private_key,
+                        vapid_claims=vapid_claims
+                    )
+                    push_success += 1
+                except WebPushException as e:
+                    push_failed += 1
+                    if e.response and e.response.status_code in [404, 410]:
+                        db.delete(sub)
+                    print(f"Push failed for {sub.endpoint[:40]}: {e}")
+
+            if push_failed > 0:
+                db.commit()
+
         return {
             "success": True,
             "sent_count": recipient_count,
-            "message": f"Notification sent to {recipient_count} user(s)"
+            "push_sent": push_success,
+            "push_failed": push_failed,
+            "message": f"Notification sent to {recipient_count} user(s), {push_success} push delivered."
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -835,60 +876,4 @@ def remove_push_subscription(
     return {"success": True}
 
 
-# ── Updated Admin Send Notification (replaces existing) ───────────────────────
 
-
-
-        # ── Send Web Push to all subscribed users ──────────────────────────
-        push_data = json.dumps({
-            "title": payload.title,
-            "message": payload.message,
-            "url": "/"
-        })
-
-        subscriptions = db.query(models.PushSubscription).filter(
-            models.PushSubscription.user_id.in_(user_ids)
-        ).all()
-
-        vapid_private_key = os.getenv("VAPID_PRIVATE_KEY")
-        vapid_claims = {"sub": f"mailto:{os.getenv('GMAIL_USER', 'readstechnologies@gmail.com')}"}
-        push_success = 0
-        push_failed = 0
-
-        if vapid_private_key and subscriptions:
-            from pywebpush import webpush, WebPushException
-            for sub in subscriptions:
-                try:
-                    webpush(
-                        subscription_info={
-                            "endpoint": sub.endpoint,
-                            "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
-                        },
-                        data=push_data,
-                        vapid_private_key=vapid_private_key,
-                        vapid_claims=vapid_claims
-                    )
-                    push_success += 1
-                except WebPushException as e:
-                    push_failed += 1
-                    # If subscription expired/invalid, remove it
-                    if e.response and e.response.status_code in [404, 410]:
-                        db.delete(sub)
-                    print(f"Push failed for {sub.endpoint[:40]}: {e}")
-
-            if push_failed > 0:
-                db.commit()  # Remove expired subscriptions
-
-        return {
-            "success": True,
-            "sent_count": recipient_count,
-            "push_sent": push_success,
-            "push_failed": push_failed,
-            "message": f"Notification sent to {recipient_count} user(s), {push_success} push delivered."
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))

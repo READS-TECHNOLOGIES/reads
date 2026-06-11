@@ -987,17 +987,19 @@ export default function PartnerModule({ user, onLogout }) {
 
           {/* Bottom nav */}
           <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
-            <div className="max-w-lg mx-auto flex items-center justify-around px-2">
-              {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
-                const active = section === key;
-                return (
-                  <button key={key} onClick={() => setSection(key)}
-                    className="flex flex-col items-center gap-1 py-3 px-4 min-w-[60px]">
-                    <Icon size={22} className={active ? 'text-reads-green' : 'text-reads-muted'} strokeWidth={active ? 2.5 : 1.8} />
-                    <span className={`text-[10px] font-semibold ${active ? 'text-reads-green' : 'text-reads-muted'}`}>{label}</span>
-                  </button>
-                );
-              })}
+            <div className="max-w-lg mx-auto overflow-x-auto scrollbar-hide">
+              <div className="flex items-center px-2 min-w-max">
+                {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+                  const active = section === key;
+                  return (
+                    <button key={key} onClick={() => setSection(key)}
+                      className="flex flex-col items-center gap-1 py-3 px-3 min-w-[64px]">
+                      <Icon size={22} className={active ? 'text-reads-green' : 'text-reads-muted'} strokeWidth={active ? 2.5 : 1.8} />
+                      <span className={`text-[10px] font-semibold whitespace-nowrap ${active ? 'text-reads-green' : 'text-reads-muted'}`}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </nav>
         </>

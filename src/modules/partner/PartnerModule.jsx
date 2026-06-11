@@ -11,29 +11,73 @@ import { LoadingOverlay, EmptyState, Badge, Modal, Toast, SectionHeader, TokenBa
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 function Overview({ stats, onNavigate }) {
+  const sections = [
+    { key: 'students',      label: 'Students',     icon: Users,         value: stats.total_students ?? 0,   color: 'bg-green-50',   iconColor: 'text-reads-green',  desc: 'View & manage enrolled students' },
+    { key: 'staff',         label: 'Staff',         icon: UserPlus,      value: stats.total_staff ?? 0,      color: 'bg-blue-50',    iconColor: 'text-blue-500',     desc: 'Manage staff members' },
+    { key: 'classes',       label: 'Classes',       icon: GraduationCap, value: stats.total_classes ?? 0,    color: 'bg-amber-50',   iconColor: 'text-amber-500',    desc: 'Manage school classes' },
+    { key: 'portal',        label: 'School Portal', icon: BookOpen,      value: null,                         color: 'bg-red-50',     iconColor: 'text-red-500',      desc: 'Curriculum, fees, results' },
+    { key: 'requests',      label: 'Requests',      icon: UserCheck,     value: stats.pending_requests ?? 0, color: 'bg-purple-50',  iconColor: 'text-purple-500',   desc: 'Pending affiliation requests', alert: (stats.pending_requests ?? 0) > 0 },
+    { key: 'course-review', label: 'Course Review', icon: BookOpen,      value: null,                         color: 'bg-teal-50',    iconColor: 'text-teal-500',     desc: 'Review courses for your school' },
+    { key: 'edits',         label: 'Lesson Edits',  icon: FileText,      value: null,                         color: 'bg-orange-50',  iconColor: 'text-orange-500',   desc: 'Request lesson corrections' },
+    { key: 'sessions',      label: 'Sessions',      icon: Calendar,      value: null,                         color: 'bg-indigo-50',  iconColor: 'text-indigo-500',   desc: 'Academic sessions & promotions' },
+    { key: 'school-profile',label: 'Profile',       icon: User,          value: null,                         color: 'bg-gray-50',    iconColor: 'text-gray-500',     desc: 'School info & settings' },
+    { key: 'wallet',        label: 'Wallet',        icon: Wallet,        value: null,                         color: 'bg-green-50',   iconColor: 'text-reads-green',  desc: 'Token balance & transactions' },
+  ];
+
   return (
-    <div className="px-4 pt-2 pb-4 space-y-5 animate-fade-in">
+    <div className="px-4 pt-2 pb-24 space-y-4 animate-fade-in">
       <SectionHeader title="Dashboard" subtitle="Partner overview" />
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Users} label="Students" value={stats.total_students ?? 0} color="green" onClick={() => onNavigate('students')} />
-        <StatCard icon={UserPlus} label="Staff" value={stats.total_staff ?? 0} color="navy" onClick={() => onNavigate('staff')} />
-        <StatCard icon={GraduationCap} label="Classes" value={stats.total_classes ?? 0} color="gold" onClick={() => onNavigate('classes')} />
-        <StatCard icon={BookOpen} label="School Portal" value="Manage →" color="red" onClick={() => onNavigate('portal')} />
-        {(stats.pending_requests ?? 0) > 0 && (
-          <div className="col-span-2">
-            <button onClick={() => onNavigate('requests')}
-              className="w-full flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-              <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Bell size={18} className="text-amber-600" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-bold text-amber-700 text-sm">{stats.pending_requests} Affiliation Request{stats.pending_requests !== 1 ? 's' : ''}</p>
-                <p className="text-amber-600 text-xs">Students waiting for approval</p>
-              </div>
-              <ChevronRight size={16} className="text-amber-500" />
-            </button>
+
+      {/* Quick stats row */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Students', value: stats.total_students ?? 0, color: 'text-reads-green' },
+          { label: 'Staff',    value: stats.total_staff ?? 0,    color: 'text-blue-500' },
+          { label: 'Classes',  value: stats.total_classes ?? 0,  color: 'text-amber-500' },
+        ].map(s => (
+          <div key={s.label} className="reads-card p-3 text-center">
+            <p className={`font-black text-2xl ${s.color}`}>{s.value}</p>
+            <p className="text-reads-muted text-xs mt-0.5">{s.label}</p>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* Alert for pending requests */}
+      {(stats.pending_requests ?? 0) > 0 && (
+        <button onClick={() => onNavigate('requests')}
+          className="w-full flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+          <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Bell size={18} className="text-amber-600" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold text-amber-700 text-sm">{stats.pending_requests} Affiliation Request{stats.pending_requests !== 1 ? 's' : ''}</p>
+            <p className="text-amber-600 text-xs">Students waiting for approval</p>
+          </div>
+          <ChevronRight size={16} className="text-amber-500" />
+        </button>
+      )}
+
+      {/* Navigation cards */}
+      <p className="font-bold text-reads-navy text-sm pt-1">Manage</p>
+      <div className="grid grid-cols-2 gap-3">
+        {sections.map(({ key, label, icon: Icon, value, color, iconColor, desc, alert }) => (
+          <button key={key} onClick={() => onNavigate(key)}
+            className="reads-card p-4 text-left space-y-2 active:scale-95 transition-all relative">
+            {alert && (
+              <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full" />
+            )}
+            <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center`}>
+              <Icon size={20} className={iconColor} />
+            </div>
+            <div>
+              <p className="font-black text-reads-navy text-sm">{label}</p>
+              <p className="text-reads-muted text-xs leading-tight mt-0.5">{desc}</p>
+            </div>
+            {typeof value === 'number' && value > 0 && (
+              <span className={`text-xs font-bold ${iconColor}`}>{value} total</span>
+            )}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -987,19 +1031,24 @@ export default function PartnerModule({ user, onLogout }) {
 
           {/* Bottom nav */}
           <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
-            <div className="max-w-lg mx-auto overflow-x-auto scrollbar-hide">
-              <div className="flex items-center px-2 min-w-max">
-                {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
-                  const active = section === key;
-                  return (
-                    <button key={key} onClick={() => setSection(key)}
-                      className="flex flex-col items-center gap-1 py-3 px-3 min-w-[64px]">
-                      <Icon size={22} className={active ? 'text-reads-green' : 'text-reads-muted'} strokeWidth={active ? 2.5 : 1.8} />
-                      <span className={`text-[10px] font-semibold whitespace-nowrap ${active ? 'text-reads-green' : 'text-reads-muted'}`}>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="max-w-lg mx-auto flex items-center justify-around px-2">
+              <button onClick={() => setSection('overview')}
+                className="flex flex-col items-center gap-1 py-3 px-4 min-w-[60px]">
+                <LayoutDashboard size={22} className={section === 'overview' ? 'text-reads-green' : 'text-reads-muted'} strokeWidth={section === 'overview' ? 2.5 : 1.8} />
+                <span className={`text-[10px] font-semibold ${section === 'overview' ? 'text-reads-green' : 'text-reads-muted'}`}>Overview</span>
+              </button>
+              {section !== 'overview' && (
+                <button onClick={() => setSection('overview')}
+                  className="flex flex-col items-center gap-1 py-3 px-4 min-w-[60px]">
+                  <ArrowLeft size={22} className="text-reads-muted" strokeWidth={1.8} />
+                  <span className="text-[10px] font-semibold text-reads-muted">Back</span>
+                </button>
+              )}
+              <button onClick={onLogout}
+                className="flex flex-col items-center gap-1 py-3 px-4 min-w-[60px]">
+                <Settings size={22} className="text-reads-muted" strokeWidth={1.8} />
+                <span className="text-[10px] font-semibold text-reads-muted">Log out</span>
+              </button>
             </div>
           </nav>
         </>

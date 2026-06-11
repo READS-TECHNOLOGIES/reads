@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense, Component } from 'react';
 import {
   Award, LayoutDashboard, BookOpen, Wallet, User, Grid,
-  Bell, Shield, School, SettingsIcon,
+  Bell, Shield, School, Settings as SettingsIcon,
   GraduationCap, ShoppingBag, ClipboardList, Sparkles, Trophy
 } from 'lucide-react';
 
@@ -371,7 +371,7 @@ export default function App() {
   if (user.account_type === 'partner') {
     // School partners — Phase 1 live
     if (!user.partner_type || user.partner_type === 'school') {
-      return <PartnerModule onLogout={handleLogout} />;
+      return <PartnerModule user={user} onLogout={handleLogout} />;
     }
     // CBT centre & Tutor portals — Phase 2 locked
     return (

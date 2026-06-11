@@ -28,7 +28,11 @@ for (const rel of candidates) {
 }
 
 if (!copied) {
+  // libsodium-wrappers-sumo is stubbed via vite alias (src/libsodium-stub.js).
+  // Missing the UMD copy only affects the /claim page runtime fallback — don't
+  // abort the build.
   console.warn('⚠ libsodium UMD build not found in node_modules. Searched:');
   candidates.forEach(c => console.warn('  ', c));
-  process.exit(1);
+  console.warn('⚠ Continuing build — stub alias covers compile-time usage.');
+  process.exit(0);
 }

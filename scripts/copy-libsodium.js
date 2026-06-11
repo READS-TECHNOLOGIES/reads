@@ -30,5 +30,5 @@ for (const rel of candidates) {
 if (!copied) {
   console.warn('⚠ libsodium UMD build not found in node_modules. Searched:');
   candidates.forEach(c => console.warn('  ', c));
-  console.warn("Skipping libsodium copy - continuing build..."); process.exit(0);
+  process.exit(1);
 }

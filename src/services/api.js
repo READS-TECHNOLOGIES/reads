@@ -40,7 +40,10 @@ const handleError = async (res, action) => {
     }
   }
 
-  if (res.status === 409) throw new Error('Email already registered');
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Conflict — resource already exists');
+  }
   if (res.status === 429) {
     const json = await res.json().catch(() => ({}));
     throw new Error(json.detail || 'Rate limit exceeded. Please try again later.');
@@ -640,35 +643,6 @@ const upload = async (path, formData) => {
   return res.json();
 };
 
-// ── Single export ─────────────────────────────────────────────────────────────
-export const api = {
-  // Base HTTP methods
-  get,
-  post,
-  patch,
-  del,
-  upload,
-
-  // Modules
-  auth,
-  students,
-  notifications,
-  school,
-  lessons,
-  courses,
-  exams,
-  tutors,
-  wallet,
-  marketplace,
-  aiTutor,
-  profile,
-  admin,
-  partner,
-  tutorPortal,
-  tournament,
-  courses,
-};
-
 export const courses = {
   list:      ()         => get('/courses'),
   get:       (id)       => get(`/courses/${id}`),
@@ -691,3 +665,33 @@ export const courses = {
     }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || 'Upload failed'))));
   },
 };
+
+// ── Single export ─────────────────────────────────────────────────────────────
+export const api = {
+  // Base HTTP methods
+  get,
+  post,
+  patch,
+  del,
+  upload,
+
+  // Modules
+  auth,
+  students,
+  notifications,
+  school,
+  lessons,
+  exams,
+  tutors,
+  wallet,
+  marketplace,
+  aiTutor,
+  profile,
+  admin,
+  partner,
+  tutorPortal,
+  tournament,
+  courses,
+};
+
+

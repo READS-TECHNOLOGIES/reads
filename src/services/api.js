@@ -640,29 +640,6 @@ const upload = async (path, formData) => {
   return res.json();
 };
 
-export const courses = {
-  list:      ()         => get('/courses'),
-  get:       (id)       => get(`/courses/${id}`),
-  enroll:    (id)       => post(`/courses/${id}/enroll`, {}),
-  adminList: (status)   => get(`/courses/admin/all${status ? `?status=${status}` : ''}`),
-  create:    (data)     => post('/courses', data),
-  edit:      (id, data) => patch(`/courses/${id}`, data),
-  remove:    (id)       => del(`/courses/${id}`),
-  approve:   (id)       => post(`/courses/${id}/approve`, {}),
-  publish:   (id)       => post(`/courses/${id}/publish`, {}),
-  generate:  (data)     => post('/courses/generate', data),
-  uploadCurriculum: (file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const token = localStorage.getItem('access_token');
-    return fetch(`${API_URL}/courses/curriculum/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd,
-    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || 'Upload failed'))));
-  },
-};
-
 // ── Single export ─────────────────────────────────────────────────────────────
 export const api = {
   // Base HTTP methods
@@ -689,4 +666,28 @@ export const api = {
   partner,
   tutorPortal,
   tournament,
+  courses,
+};
+
+export const courses = {
+  list:      ()         => get('/courses'),
+  get:       (id)       => get(`/courses/${id}`),
+  enroll:    (id)       => post(`/courses/${id}/enroll`, {}),
+  adminList: (status)   => get(`/courses/admin/all${status ? `?status=${status}` : ''}`),
+  create:    (data)     => post('/courses', data),
+  edit:      (id, data) => patch(`/courses/${id}`, data),
+  remove:    (id)       => del(`/courses/${id}`),
+  approve:   (id)       => post(`/courses/${id}/approve`, {}),
+  publish:   (id)       => post(`/courses/${id}/publish`, {}),
+  generate:  (data)     => post('/courses/generate', data),
+  uploadCurriculum: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const token = localStorage.getItem('access_token');
+    return fetch(`${API_URL}/courses/curriculum/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || 'Upload failed'))));
+  },
 };

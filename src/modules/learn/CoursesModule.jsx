@@ -173,7 +173,7 @@ function CourseLessonView({ lesson, week, course, onComplete, onBack }) {
     try {
       const formatted = questions.map(q => ({
         question_id: q.id,
-        selected_answer: answers[q.id] ?? '',
+        selected_text: answers[q.id] ?? '',   // matches backend grading
       }));
       const res = await api.lessons.submitQuiz(lesson.id, attemptId, formatted);
       setResult(res);

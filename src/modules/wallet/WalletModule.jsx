@@ -15,7 +15,7 @@ const TX_TYPES = {
   fee:      { label: 'Fee',      color: 'text-reads-muted', bg: 'bg-gray-100',        icon: ArrowUpRight  },
 };
 
-const SUPPORTED_WALLETS = ['eternl', 'nami', 'typhon', 'vespr', 'flint'];
+const SUPPORTED_WALLETS = ['eternl', 'nami', 'typhon', 'vespr', 'flint', '1am'];
 
 const TxRow = ({ tx }) => {
   const meta = TX_TYPES[tx.type] || TX_TYPES.sent;
